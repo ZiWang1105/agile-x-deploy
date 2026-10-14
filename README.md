@@ -2,6 +2,12 @@
 
 This workspace assembles the two user-supplied archives and provides an actuated MuJoCo simulation, a native interactive IK viewer, and a backend-independent robot API. The simulation works locally. The real-backend transport boundary is implemented and tested with a loopback fixture; a commissioned AgileX hardware driver is not included, and no hardware was connected or commanded.
 
+## Demo
+
+![Dual NERO simulation demonstrating dual-arm translation and rotation, independent gripper control, HOLD, and resume](previews/dual_nero_ik_validation.gif)
+
+32-second simulation playback at 1× speed, with live TCP error readouts. Scripted targets use the same robot API as the interactive viewer; this is not a mouse recording. Contacts are disabled. [Watch the full-resolution MP4](previews/dual_nero_ik_validation.mp4).
+
 ## Run interactive IK
 
 Run in a desktop terminal:
