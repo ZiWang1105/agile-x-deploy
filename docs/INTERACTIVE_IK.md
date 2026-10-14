@@ -1,4 +1,4 @@
-# Interactive IK runtime, version 0.1
+# Interactive IK runtime, contract version 2
 
 ## Ownership and data flow
 
@@ -23,7 +23,7 @@ All pose targets are in the fixed stand's `base_link`. Both arms use the supplie
 
 The renderer uses a separate model reconstructed from `Observation`. It cannot access the plant `MjData`. The IK also uses its own FK data built from the measured 14 arm encoders. Exactly one controller integrates joint references. Only the backend advances physics or writes a hardware setpoint. MuJoCo is a kinematics dependency of this first shared controller, including when used with the hardware adapter; no simulated plant is stepped by the real backend.
 
-For this local prototype, the owned control loop runs in a joined thread while the native viewer renders separately. This is not a hard real-time or process-isolated deployment. The next deployed version can place these same contracts on the existing message transport. The viewer and agent API need not change.
+For simulation, the owned control loop runs in a joined thread while the native viewer renders separately. Physical commissioning runs the same Robot/controller/RealBackend stack in an owned child process, accessed through a `HardwareSession` implementing `RobotInterface`. The child enforces viewer heartbeat expiry independently of the renderer's Python GIL. Neither arrangement is hard real time. Future deployments can place the same contracts on the existing message transport.
 
 ## Contract
 
@@ -46,7 +46,7 @@ For this local prototype, the owned control loop runs in a joined thread while t
 
 This is a schema example, not a recommended startup command. Use `observation.as_action()` as the basis for a target, then modify the desired pose.
 
-Both arms are always specified together. Missing arms, extra fields, non-finite values, non-unit quaternions, and gripper values other than integer 0/1 are rejected. The 2 m coordinate envelope catches gross unit mistakes; it is not a reachable workspace or collision check.
+Both arms are always specified together. Missing arms, extra fields, non-finite poses, non-unit quaternions, and gripper values other than integer 0/1 or null are rejected. Version 2 adds `gripper_open: null` to leave a gripper unchanged; this is also the default when constructing `ArmTarget`. An unavailable calibrated gripper measurement is `null` in `Observation.gripper_position`, never an invented zero. A non-null gripper command is rejected when that feedback is unavailable. Sim and real use the same version 2 types. The 2 m coordinate envelope catches gross unit mistakes; it is not a reachable workspace or collision check.
 
 Encoder order is explicit: `left_joint1` through `left_joint7`, then `right_joint1` through `right_joint7`. Arm units are radians and radians/second. Gripper feedback is normalized physical travel, from 0 closed to 1 open; simulation maps this to 0–0.05 m travel of the first finger and couples the second finger with opposite displacement. It is not force feedback or an asserted calibrated jaw aperture. Real transport calibration must implement the same semantic quantity.
 
@@ -58,14 +58,14 @@ Observation timestamps use host monotonic acquisition time. Backend delivery mus
 
 - Control period: 0.01 s; simulated physics period: 0.002 s.
 - IK: two seven-axis damped least-squares Jacobian tasks, both evaluated against measured FK; soft null-space posture preference. No coupled collision optimization.
-- One joint-reference integrator; position limits from the supplied URDF, 0.6 rad/s target speed, and 2 rad/s² target acceleration during tracking. Discrete braking margins reduce speed near a limit. These are requested-motion limits, not measured-dynamics certification. No jerk bound is claimed.
+- One joint-reference integrator; position limits from the supplied URDF intersected with live selected-controller bounds on hardware, and per-joint controller-reported speed/acceleration limits during tracking. Simulation uses the documented October 14 left-controller readback fixture for both arms. Discrete braking margins reduce speed near a limit. These are requested-motion limits, not measured-dynamics certification. No jerk bound is claimed.
 - Gripper references ramp at normalized travel rate 0.6/s (0.03 m/s per simulated finger).
-- Joint reference versus measured tracking error above 0.2 rad faults.
-- Target admission requires an observation younger than 0.2 s and no joint displacement above 0.15 rad since that observation.
+- No arbitrary joint tracking-error cutoff or Cartesian velocity clip is applied. Firmware faults still latch HOLD.
+- Target admission requires an observation younger than 0.2 s with valid sequence and acquisition timestamps.
 - A target must be refreshed within 0.5 s. The viewer and example policy refresh every 0.1 s. A stopped policy loses motion ownership through lease expiry.
 - HOLD discards the Cartesian goal and captures the measured joint/gripper position. Servos decelerate toward that position. This intentionally overrides tracking continuity; it does not invoke a hardware emergency stop.
 - Failure to make meaningful progress for 3 wall-clock seconds with aggregate pose error above the threshold enters HOLD and reports an unreachable/stalled goal. This is a heuristic, not a proof of reachability. A fresh user request may resume.
-- Stale or invalid encoders, tracking failures, and control overruns latch a fault. Targets remain rejected after an operator HOLD; inspect and restart to clear it. The transport's HOLD is invoked when valid feedback cannot be read, rather than transmitting stale joint positions.
+- Stale or invalid encoders, firmware faults, and control overruns latch a fault. Targets remain rejected after an operator HOLD; inspect and restart to clear it. The transport's HOLD is invoked when valid feedback cannot be read, rather than transmitting stale joint positions.
 
 Runtime state is `hold`, `tracking`, or `fault`, with a reason in every observation. Rejected malformed/stale requests are exceptions and do not silently replace the active target. A native display Reset enters HOLD while preserving the plant state. Selecting/dragging robot geometry is ignored by the command path.
 
@@ -79,7 +79,7 @@ Native rendering follows the [MuJoCo passive-viewer API](https://mujoco.readthed
 
 ## Hardware boundary and remaining work
 
-`RealBackend` adapts a `HardwareTransport` to the same runtime. It does not open CAN, import pyAgxArm, auto-enable motors, or pretend simulation feedback is hardware data. The CLI deliberately exposes only `--backend sim`. Tests use a clearly named loopback fixture to prove matching contract and controller behavior; this provides no physical commissioning evidence.
+`RealBackend` adapts a `HardwareTransport` to the same runtime. The generic adapter does not itself open CAN or auto-enable motors. `NeroTransport` provides the explicit single-arm NERO 1.21 commissioning implementation, hosted by `HardwareSession` in a separate process. Its physical observation includes timestamped joint angles and firmware-reported velocities; gripper travel is null. Its bounded joint-position wire commands require explicit operator arming. `--backend real-commissioning` exposes that path, while `--backend commissioning-sim` exercises it against a simulated plant. The `sim` and receive-only `real-preview` modes remain separate and never enable hardware. See [hardware commissioning](HARDWARE_COMMISSIONING.md) for physical qualification status and limits.
 
 Implement and qualify the following before enabling real execution:
 

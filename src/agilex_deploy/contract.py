@@ -1,4 +1,4 @@
-"""Version 1 robot contract. Distances are meters, rotations are XYZW quaternions.
+"""Version 2 robot contract. Distances are meters, rotations are XYZW quaternions.
 
 All poses use the fixed stand's base_link frame. There is no simulator state,
 ground-truth object state, backend selector, or vendor SDK type in this API.
@@ -38,13 +38,13 @@ class Pose:
 @dataclass(frozen=True)
 class ArmTarget:
     pose: Pose
-    gripper_open: int = 1
+    gripper_open: int | None = None  # None: leave the gripper unchanged.
 
     def __post_init__(self):
         if not isinstance(self.pose, Pose):
             raise ValueError("pose must be a Pose")
-        if type(self.gripper_open) is not int or self.gripper_open not in (0, 1):
-            raise ValueError("gripper_open must be integer 0 or 1")
+        if self.gripper_open is not None and (type(self.gripper_open) is not int or self.gripper_open not in (0, 1)):
+            raise ValueError("gripper_open must be integer 0, 1, or None (unchanged)")
 
 
 @dataclass(frozen=True)
@@ -80,19 +80,19 @@ class Observation:
     joint_names: tuple[str, ...]
     joint_positions_rad: tuple[float, ...]
     joint_velocities_rad_s: tuple[float, ...]
-    gripper_position: tuple[float, float]  # Calibrated travel: 0 closed, 1 open.
+    gripper_position: tuple[float | None, float | None]  # None: unavailable; otherwise 0 closed, 1 open.
     left_tcp: Pose
     right_tcp: Pose
     mode: str
     reason: str
     cameras: tuple = ()  # Empty means unavailable; no synthetic RGB-D is returned.
-    schema_version: int = 1
+    schema_version: int = 2
 
     def to_dict(self):
         return asdict(self)
 
     def as_action(self):
-        return Action(*(ArmTarget(getattr(self, f"{s}_tcp"), int(self.gripper_position[i] >= .5))
+        return Action(*(ArmTarget(getattr(self, f"{s}_tcp"), None if self.gripper_position[i] is None else int(self.gripper_position[i] >= .5))
                         for i, s in enumerate(SIDES)))
 
 

@@ -22,15 +22,17 @@ class EncoderSample:
     joint_names: tuple[str, ...]
     positions: tuple[float, ...]
     velocities: tuple[float, ...]
-    grippers: tuple[float, ...]
+    grippers: tuple[float | None, ...]
 
     def validate(self):
         if self.joint_names != JOINT_NAMES:
             raise ValueError("Encoder joint names/order do not match contract")
         finite_tuple(self.positions, 14, "encoder positions")
         finite_tuple(self.velocities, 14, "encoder velocities")
-        g = finite_tuple(self.grippers, 2, "gripper positions")
-        if not np.isfinite(self.timestamp_s) or any(x < -.01 or x > 1.01 for x in g):
+        if len(self.grippers) != 2:
+            raise ValueError("Expected two gripper measurements (None if unavailable)")
+        g = self.grippers
+        if not np.isfinite(self.timestamp_s) or any(x is not None and (not np.isfinite(x) or x < -.01 or x > 1.01) for x in g):
             raise ValueError("Invalid acquisition timestamp or gripper feedback")
         if type(self.sequence) is not int or self.sequence < 0:
             raise ValueError("Invalid encoder sequence")
@@ -45,18 +47,22 @@ class Backend(Protocol):
 
 
 class SimBackend:
-    def __init__(self):
+    def __init__(self, joint_positions=None):
         self.model = load_model()
         self.data = mujoco.MjData(self.model)
         self.kinematics = Kinematics(self.model)
         self.qids, self.dids = self.kinematics.qids, self.kinematics.dids
-        self.data.qpos[self.qids] = initial_positions()
+        q = initial_positions() if joint_positions is None else np.asarray(
+            finite_tuple(joint_positions, 14, "initial joint positions"))
+        if np.any(q < self.kinematics.limits[:, 0]) or np.any(q > self.kinematics.limits[:, 1]):
+            raise ValueError("Initial joint positions outside model limits; no clipping applied")
+        self.data.qpos[self.qids] = q
         for side in SIDES:
             for finger, sign in ((1, 1), (2, -1)):
                 self.data.qpos[self.model.joint(f"{side}_gripper_joint{finger}").qposadr[0]] = sign * .018
         self.sequence = 0
         self.closed = False
-        self.write(initial_positions(), np.full(2, .36))
+        self.write(q, np.full(2, .36))
         mujoco.mj_forward(self.model, self.data)
         self.timestamp = time.monotonic()
 
@@ -117,7 +123,7 @@ class RealBackend:
         return sample
 
     def write(self, positions, grippers):
-        self.transport.send_positions(positions.copy(), grippers.copy())
+        self.transport.send_positions(positions.copy(), tuple(grippers))
 
     def advance(self):
         pass  # Hardware owns its clock. The runtime must be ticked at 100 Hz.

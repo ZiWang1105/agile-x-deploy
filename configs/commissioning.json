@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "physical_setup": "fixed dual NERO stand; no mobile base or lift",
+  "mounting_and_support_confirmed_by_user": true,
+  "static_model_posture": {
+    "confirmed_by_user": true,
+    "user_statement": "Blue posture matches both arms",
+    "scope": "Visual agreement at the observed posture; not a full-range joint-direction, TCP, collision or dynamics calibration"
+  },
+  "firmware_observations": {
+    "left": {
+      "usb_serial": "0030002D4648570A20303731",
+      "software_version": "1.21",
+      "sdk_profile": "v121"
+    },
+    "right": {
+      "usb_serial": "0040002C4648570220393831",
+      "software_version": "1.21",
+      "sdk_profile": "v121"
+    }
+  },
+  "reviewed_sdk_commit": "1ae40ad4755ca25ad32bece3ab42325698185fc7",
+  "firmware_joint_limits": {
+    "verified": false,
+    "result": "Left-arm position, speed and acceleration readback received on 2026-10-14; right-arm readback unavailable in the observed mode. Each real arming request requires fresh selected-controller readback before enable. No limit settings were modified.",
+    "left_readback_available": true,
+    "right_readback_available": false,
+    "acceleration_units": "Official NERO SDK getter decoding; not independently calibrated",
+    "numeric_torque_ceiling_verified": false
+  },
+  "controller_mounting_configuration_verified": true,
+  "controller_mounting_configuration_evidence": {
+    "source": "user confirmation of official Web UI settings",
+    "left": "side mounting",
+    "right": "side mounting",
+    "independently_read_back_by_software": false
+  },
+  "dynamic_joint_direction_check_complete": false,
+  "tcp_calibrated": false,
+  "gripper_travel_calibrated": false,
+  "collision_admission_qualified": false,
+  "independent_watchdog_and_hold_qualified": false,
+  "viewer_watchdog_process_tested_in_simulation": true,
+  "real_transport_unarmed_feedback_tested": true,
+  "single_arm_commissioning_implementation": "Explicit operator arming; full workspace by default; selected-controller joint limits; grippers unavailable; physical following and failure-stop behavior not qualified",
+  "physical_motion_tested": true,
+  "automatic_hardware_enable": false,
+  "note": "Commissioning evidence only. This file does not authorize motion or bypass runtime checks. Firmware observations must be refreshed after controller updates.",
+  "physical_motion_evidence": "Operator sessions enabled and moved the left arm. A later session faulted with CAN ENOBUFS. Physical tracking after the queue-handling fix has not been tested; this is not stop or dynamics qualification."
+}

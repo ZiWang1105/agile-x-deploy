@@ -1,6 +1,6 @@
 # NERO dual-arm interactive IK
 
-This workspace assembles the two user-supplied archives and provides an actuated MuJoCo simulation, a native interactive IK viewer, and a backend-independent robot API. The simulation works locally. The real-backend transport boundary is implemented and tested with a loopback fixture; a commissioned AgileX hardware driver is not included, and no hardware was connected or commanded.
+This workspace assembles the two user-supplied archives and provides an actuated MuJoCo simulation, a native interactive IK viewer, and a backend-independent robot API. Simulation and the receive-only physical joint mirror work locally. An explicitly armed, single-arm NERO 1.21 commissioning transport is implemented; its command path and independent viewer-timeout handling have been tested in simulation, and its unarmed physical feedback path has been tested on both arms. Physical enable, motion and stopping have not yet been tested. It is not a qualified general hardware teleoperation system.
 
 ## Demo
 
@@ -34,6 +34,57 @@ Red spheres/axes are targets; small green markers are encoder-derived TCPs. The 
 
 The CLI uses the active desktop's `DISPLAY`. On this machine, `DISPLAY=:1 .venv/bin/agilex-interactive` was tested successfully. Prefer the display variable supplied by your desktop session. The command stays in the foreground; no server or detached process is installed.
 
+## Live hardware mirror and IK preview
+
+On the commissioned desktop, with both CAN interfaces already configured at 1 Mbps:
+
+```bash
+DISPLAY=:1 .venv/bin/agilex-interactive --backend real-preview
+```
+
+Blue arms show physical joint feedback. Translucent amber arms show simulated IK, initialized from the physical joint angles when the application starts. Drag the red EEF targets with the same controls as simulation. **Targets command only the preview simulator; this mode cannot enable or move hardware.** Press **M** to hide/show the amber preview and inspect the blue measured posture. Space/R stops only the simulation preview. Gripper controls are disabled and fingers are hidden because physical travel is not calibrated.
+
+The reader resolves each arm by the confirmed USB serial in `configs/hardware_mapping.json`, even if Linux renumbers `can0`/`can1`. It refuses missing/ambiguous adapters, stale feedback, receive overflow, and excessive paired-frame skew. A hardware feedback fault freezes the last measured display, cancels preview tracking, and requires restart. This is a receive-only commissioning tool, not the `RealBackend` motion transport. It does not fabricate physical velocity or gripper measurements to satisfy the full robot contract.
+
+```bash
+# Read a paired joint snapshot; sends no CAN data frames.
+.venv/bin/python -m agilex_deploy.can_feedback --output logs/commissioning/live_snapshot.json
+
+# Test simulated IK from live joints and render a comparison image/report.
+MUJOCO_GL=egl .venv/bin/python scripts/validate_live_preview.py
+```
+
+See [hardware commissioning](docs/HARDWARE_COMMISSIONING.md) for the remaining steps before physical following.
+
+## Single-arm physical commissioning
+
+For full-workspace mouse control, start with both arms supported and disabled, clear the arm's movement area, then run:
+
+```bash
+DISPLAY=:1 .venv/bin/agilex-interactive --backend real-commissioning --side left --workspace full
+```
+
+This starts **UNARMED**. E enables the selected arm holding its current posture. Double-click its red sphere, Ctrl+right-drag to translate, and Ctrl+left-drag to rotate. Full mode removes the radius, height floor, orientation cap and joint excursion cap relative to the arming pose. Full workspace is now the default. Joint position limits, live controller speed/acceleration limits, one-arm ownership and communication watchdogs remain. The old 0.03 rad/s, 0.1 rad/s², 5% firmware speed and arbitrary tracking-error caps are removed. It is not a collision-aware planner: the table, stand, opposite arm and other obstacles are not protected. An IK target may be unreachable even though the handle can be dragged there. Space requests HOLD; Q closes the controller and leaves motors enabled. To use the identical full-workspace controls without hardware access, replace `real-commissioning` with `commissioning-sim`.
+
+On **E**, the transport selects CAN joint-position mode at **100% of the controller's configured speed**, reads that selected controller's seven position/speed/acceleration limits while disabled, seeds current angles, then enables its joints. Incomplete readback prevents enable; settings from the other arm are never substituted. The speed reference respects the lower of the manual maximum and controller readback. Joint position bounds use the intersection of the supplied URDF and controller settings, without additional margins.
+
+The October 14 left-arm readback was `[3.14, 3.14, 3.14, 3.14, 3.92, 3.92, 3.92]` rad/s and `[2, 2, 2.5, 2.5, 2.5, 2.5, 2.5]` rad/s². These are ceilings, not constant commanded speeds. Simulation uses that readback as an explicit offline fixture for both arms; real sessions read their own selected controller anew. The right-arm read-only probe did not return limits in its observed mode.
+
+Torque/current protection remains in the firmware, unchanged by this host. A numeric hardware torque ceiling has not been verified: URDF effort `100` and MIT torque encoding `±16 Nm` are not evidence of a safe joint torque limit. The simulator's force range is not a validated hardware torque model. See [limit provenance](docs/HARDWARE_COMMISSIONING.md#motion-limit-sources).
+
+**G** requests a fixed nominal-TCP target 30 mm above the arming pose; repeated presses do not accumulate movement. Grippers are not enabled or commanded. An optional legacy envelope remains available only with explicit `--workspace bounded`; it is never selected by default.
+
+**Space/R** requests servo HOLD. **Q/window close requests HOLD and leaves motors enabled**; it does not release the arm or guarantee physical emergency stopping. A CAN or power failure can prevent HOLD. Full-range physical following and failure-stop behavior remain unqualified. Use `--side right` for a separate right-arm session; simultaneous dual-arm physical control is deliberately not exposed yet.
+
+Practice the identical arming/UI workflow without opening CAN:
+
+```bash
+DISPLAY=:1 .venv/bin/agilex-interactive --backend commissioning-sim --side left
+.venv/bin/python scripts/check_real_session.py  # Reads real feedback; never arms.
+```
+
+The hardware control loop runs in an owned, joined child process. A viewer heartbeat gap over 200 ms latches HOLD independently of the viewer's Python GIL. This covers viewer failure; it is not a certified controller-level watchdog or proof of stopping after the control process, host, CAN link, or power fails.
+
 ## Same interface for sim, real, and agents
 
 ```python
@@ -51,7 +102,7 @@ The viewer uses the shared request path and does not command joints. The simulat
 
 ## Scope and validation
 
-This first controller uses damped Jacobian IK, not the official CasADi/IPOPT solver. Joint targets have position limits, a 0.6 rad/s speed bound, and a 2 rad/s² acceleration bound during tracking. HOLD cancels the target and captures the current position; it is a servo hold, not a physical emergency stop. Targets expire after 0.5 s without refresh. Stale feedback, bad joint ordering, tracking faults, and control overruns cause a latched fault and backend HOLD.
+This first controller uses damped Jacobian IK, not the official CasADi/IPOPT solver. Joint targets use source position bounds and per-joint speed/acceleration limits described above. Cartesian velocity clipping and fixed tracking-error thresholds are removed; damping and feedback gains remain part of the IK solver. HOLD cancels the target and captures the current position; it is a servo hold, not a physical emergency stop. Targets expire after 0.5 s without refresh. Stale feedback, bad joint ordering, controller faults, and control overruns cause a latched fault and backend HOLD.
 
 The simulator uses ideal gravity compensation. **Contacts and collision admission are not implemented.** It is suitable for free-space interactive IK, not grasp/contact validation or hardware execution. Source inertias and limits are unqualified. The nominal TCP is `[0, 0, 0.1358]` meters in each `*_gripper_base`, at the CAD finger-root plane; it is not a physically calibrated pinch frame. Top-camera orientation is preserved, and its bracket joint is fixed in the runtime model.
 
@@ -62,7 +113,7 @@ MUJOCO_GL=egl .venv/bin/python scripts/smoke_ik.py
 .venv/bin/python examples/agent_policy.py
 ```
 
-The automated suite covers paired 6D tracking, command limits, actuator-only motion, HOLD/resume, command expiry, stale feedback, invalid joint order, unreachable-target handling, gripper coupling, camera lock, Jacobian finite differences, drag/reset routing, thread cleanup, and identical sim/real-adapter trajectories through a loopback transport. This is interface evidence, not a real-robot test.
+The automated suite covers paired 6D tracking, command limits, actuator-only motion, HOLD/resume, command expiry, stale feedback, invalid joint order, unreachable-target handling, gripper coupling, camera lock, Jacobian finite differences, drag/reset routing, thread/process cleanup, receive-only parsing, diagnostic request whitelists, startup setpoints before enable, nullable gripper capabilities, commissioning admission, and the independent viewer heartbeat watchdog. Command-path evidence uses simulated or in-memory transports; it does not establish physical stopping or collision clearance.
 
 `previews/interactive_ik.png` and `previews/interactive_ik_report.json` show a repeatable two-arm translation/rotation command. The native desktop window also passed a timed launch/render/close test. Actual human mouse manipulation has not been exercised by automation; handle event conversion is covered separately.
 

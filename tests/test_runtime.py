@@ -73,8 +73,8 @@ class RuntimeTests(unittest.TestCase):
                     r.submit_target(a, r.observe().observation_id)
                 r.tick()
                 v = r.controller.velocity.copy()
-                self.assertLessEqual(np.max(abs(v)), MAX_VELOCITY + 1e-9)
-                self.assertLessEqual(np.max(abs(v - previous_velocity)) / CONTROL_DT, MAX_ACCELERATION + 1e-8)
+                self.assertTrue(np.all(abs(v) <= MAX_VELOCITY + 1e-9))
+                self.assertTrue(np.all(abs(v - previous_velocity) / CONTROL_DT <= MAX_ACCELERATION + 1e-8))
                 previous_velocity = v
                 self.assertTrue(np.all(r.controller.reference >= r.kinematics.limits[:, 0]))
                 self.assertTrue(np.all(r.controller.reference <= r.kinematics.limits[:, 1]))

@@ -73,7 +73,10 @@ class Kinematics:
         self.data.qpos[self.qids] = q
         for i, side in enumerate(SIDES):
             for finger, sign in ((1, 1), (2, -1)):
-                self.data.qpos[self.model.joint(f"{side}_gripper_joint{finger}").qposadr[0]] = sign * .05 * grippers[i]
+                # Unknown finger positions are hidden by hardware viewers. This
+                # display placeholder does not enter an observation or command.
+                value = 0. if grippers[i] is None else grippers[i]
+                self.data.qpos[self.model.joint(f"{side}_gripper_joint{finger}").qposadr[0]] = sign * .05 * value
         mujoco.mj_forward(self.model, self.data)
 
     def pose(self, side):

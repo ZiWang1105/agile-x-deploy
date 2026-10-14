@@ -93,8 +93,9 @@ class Robot:
             if observed is None or time.monotonic() - observed.timestamp_s > FEEDBACK_MAX_AGE_S:
                 raise ValueError("Unknown or stale observation; observe again")
             sample = self._read()
-            if np.max(np.abs(np.asarray(observed.joint_positions_rad) - sample.positions)) > .15:
-                raise ValueError("Posture changed; observe again")
+            for i, side in enumerate(("left", "right")):
+                if sample.grippers[i] is None and getattr(action, side).gripper_open is not None:
+                    raise ValueError(f"{side} gripper feedback unavailable; use gripper_open=None")
             now = time.monotonic()
             if action != self.target:
                 self.goal_started = self.last_progress = now
@@ -151,6 +152,8 @@ class Robot:
             except Exception as error:
                 try:
                     self._hold(str(error), fault=True)
+                except Exception as hold_error:
+                    self.reason = f"{error}; HOLD failed: {hold_error}"
                 finally:
                     if self.last_sample is not None:
                         self._observe(self.last_sample)

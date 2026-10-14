@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-10-14T21:24:18.373350+00:00",
+  "host": "zi-berkeley",
+  "side_convention": "Robot anatomical left/right; robot left is viewer right when facing the front",
+  "arms": {
+    "left": {
+      "observed_interface": "can1",
+      "usb_port_path": "1-5.1.3",
+      "usb_identity": {
+        "idVendor": "1d50",
+        "idProduct": "606f",
+        "manufacturer": "bytewerk",
+        "product": "candleLight USB to CAN adapter",
+        "serial": "0030002D4648570A20303731"
+      },
+      "confirmation": "user moved only robot left arm; can1 changed and can0 remained nearly stationary",
+      "max_joint_change_during_check_deg": 68.455
+    },
+    "right": {
+      "observed_interface": "can0",
+      "usb_port_path": "1-5.1.2",
+      "usb_identity": {
+        "idVendor": "1d50",
+        "idProduct": "606f",
+        "manufacturer": "bytewerk",
+        "product": "candleLight USB to CAN adapter",
+        "serial": "0040002C4648570220393831"
+      },
+      "confirmation": "remaining channel; nearly stationary during left-arm movement",
+      "max_joint_change_during_check_deg": 0.13299999999999557
+    }
+  },
+  "automatic_hardware_enable": false,
+  "note": "Confirmed physical-side mapping. Receive-only feedback, diagnostics and explicitly armed hardware sessions resolve current interfaces by USB serial, vendor and product. Observed interface names and port paths are historical. This mapping does not enable motors."
+}
