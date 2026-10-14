@@ -1,0 +1,12 @@
+[
+  {
+    "name": "wbcd_urdf-20261014T025717Z-1-001.zip",
+    "sha256": "a8647051ef1c184012545f00567192c933eb2f806bc2da325bf3c7c9130b6059",
+    "size_bytes": 1601611
+  },
+  {
+    "name": "agx_arm_sim-20261014T025717Z-1-001.zip",
+    "sha256": "62d7f33ec7087c57791f757d6458b18b219e4f48def299a1afd07eb1790b7b35",
+    "size_bytes": 92784679
+  }
+]

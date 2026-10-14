@@ -1,0 +1,46 @@
+{
+  "simulation_seconds": 7,
+  "target": {
+    "left": {
+      "position_m": [
+        0.43035566767565675,
+        0.417144036469052,
+        0.14741999168450326
+      ],
+      "quaternion_xyzw": [
+        0.059437960760527556,
+        0.9049386093661883,
+        0.17643143067781655,
+        0.38265544863231493
+      ],
+      "gripper_open": 1
+    },
+    "right": {
+      "position_m": [
+        0.4303556908574708,
+        -0.41714306556989983,
+        0.14741964341370764
+      ],
+      "quaternion_xyzw": [
+        -0.14556730212861158,
+        0.896110729519014,
+        -0.12943771207049873,
+        0.39880020020788953
+      ],
+      "gripper_open": 1
+    }
+  },
+  "errors": {
+    "left": {
+      "position_mm": 0.04221135456547514,
+      "orientation_deg": 0.004088904788074777
+    },
+    "right": {
+      "position_mm": 0.03643009238728596,
+      "orientation_deg": 0.0037373786230010812
+    }
+  },
+  "max_requested_velocity_rad_s": 0.6000000000000005,
+  "max_requested_acceleration_rad_s2": 2.0000000000000573,
+  "notes": "Actuated dynamics, ideal gravity compensation, contacts disabled; no hardware test."
+}

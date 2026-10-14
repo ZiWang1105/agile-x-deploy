@@ -1,0 +1,222 @@
+[
+  {
+    "path": "vendor/agx_arm_sim/Moveit2/nero_gripper_moveit_config/config/kinematics.yaml",
+    "sha256": "21d2a3a398ac29cf31610701ec8384d919cffc5229202b426bb36d8818580a52",
+    "bytes": 362
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/LICENSE",
+    "sha256": "247944c63de1573653722ba784f96123da267105b7b48577e0c8826a24b809f6",
+    "bytes": 1065
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/base_link.stl",
+    "sha256": "540462fb56e52091daa3cd1ad3acc3c19a43f120b2f11bae5a69b32b08c738b6",
+    "bytes": 807284
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/base_link.dae",
+    "sha256": "a369d27a339834e4f59cd2b16065d62a37cb8e1bdd503e150787149e998f03f6",
+    "bytes": 1101428
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/gripper_base.dae",
+    "sha256": "92f7c3116b219168c36678a44f56f49c1e63fc080129f8a27fad213727ea8a7d",
+    "bytes": 2729600
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/gripper_flange.dae",
+    "sha256": "58e5a5fd582a6a9bda58fe3946cf8b7c3994e19ff4c1c1a75f61677f797fff42",
+    "bytes": 1016377
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/gripper_link1.dae",
+    "sha256": "b4aaf0e024d09eb0454e70e0c5092638edcf7da7c253d1effdeeaec46f76427b",
+    "bytes": 176476
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/gripper_link2.dae",
+    "sha256": "0da1350898b2787b76b84698253aeb1efd2ddb6360b2fa2ae03ecff389883af8",
+    "bytes": 176476
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/link1.dae",
+    "sha256": "8aafc23509ce76d9c6fdcf8ef49931a8def1b5bfd1f974cbe677031334da9404",
+    "bytes": 1611774
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/link2.dae",
+    "sha256": "00b3eb4a91c8efd95f3c161ee5318b66cb3e2fa55dac5c139077cdd67463c2ac",
+    "bytes": 24698201
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/link3.dae",
+    "sha256": "cd3f0f08ce02aa36bddc0c89efa7d040b927e589e1816da1fd14417511d2b7bc",
+    "bytes": 2916994
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/link4.dae",
+    "sha256": "ea607e157c173ca81d0982a24f2fdd7e98c695d94e0055b58028ce36b09b8708",
+    "bytes": 8077485
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/link5.dae",
+    "sha256": "7733ac4afd30e38360e7a7e833b0ed6192d6fd20c99062b636a236f06b8bfb97",
+    "bytes": 2775278
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/link6.dae",
+    "sha256": "260e1808d888da15e7e4e417a3ab0340f2223a5ed4b37e330278862096ed6f85",
+    "bytes": 1202101
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/link7.dae",
+    "sha256": "8c2498c59bcf574386cbd7e01fd5d81ff2483e26ae2f0e919deec62a04bce77d",
+    "bytes": 230712
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/gripper_base.stl",
+    "sha256": "041b1c8ffa29bff9a5e9350ec9d3e1a0129a5abcba1f347b29b5ad7367ba5f5a",
+    "bytes": 1837884
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/gripper_flange.stl",
+    "sha256": "186697a73e7cafd9fd41d96f1eea9b34b444c058b9561fb2e3ea439c835ae2e8",
+    "bytes": 665184
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/gripper_link1.stl",
+    "sha256": "475a7d8db056524d7659fadf5a2c307d62791047b6214d733dfc7846ed1c613d",
+    "bytes": 104384
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/gripper_link2.stl",
+    "sha256": "3f88d534a85e28a33ef7d2061adacbd1d25214aa9325f9e464aad0f9e4b74606",
+    "bytes": 104384
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/link1.stl",
+    "sha256": "0e38bf33ce41f04d7e70e471768c00fa144ba4016a878b9a6d8303c319736e09",
+    "bytes": 1130084
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/link2.stl",
+    "sha256": "fc9eb85db9fbd351c9f6e119f5fed33c6f0dd3bc3b11698a0f96aaeb2d36c721",
+    "bytes": 1802534
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/link3.stl",
+    "sha256": "44c70f731ad5067d608ebebc9e59f3c231988f992dfac6cb01ee7a6bb4b053f1",
+    "bytes": 1947484
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/link4.stl",
+    "sha256": "47242e9b5d8b06c912261756f24dddb1e7f54ac6e718232a25889115298b966d",
+    "bytes": 1814784
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/link5.stl",
+    "sha256": "dc497f5a9bab2d0d314250134d4ec86617abea7205d122db41b765acdb86ae7e",
+    "bytes": 1810084
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/link6.stl",
+    "sha256": "66417d30596e33c890f4f141781023bd3ea15709a502e7f59b30f6676f556022",
+    "bytes": 758284
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/link7.stl",
+    "sha256": "70a2f415358f9e46088673c92bfe78ca5b1072dd73b7ea24464ba3ebb4c3e647",
+    "bytes": 149384
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/urdf/nero_description.urdf",
+    "sha256": "c297c4bd2caeff44c673ae69070fc80f950510c0cb33cfa8b81b5bc774e91278",
+    "bytes": 9064
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/meshes/realsense_mid_stand.dae",
+    "sha256": "1b9253505836723353528b41c7008c4d8f539a774959da3ad9669c26ae62e45a",
+    "bytes": 713245
+  },
+  {
+    "path": "vendor/agx_arm_sim/agx_arm_description/urdf/nero_gripper_d435.urdf",
+    "sha256": "3e5469c48e3cb936bc587638d0e3c0d4f7e2a97a14097b39ecf11133cd4a52e7",
+    "bytes": 16120
+  },
+  {
+    "path": "vendor/agx_arm_sim/realsense2_description/meshes/d435.dae",
+    "sha256": "42f3b66f47a1f8f425a2e4dc07c1d9c283183167d8441f520a15623d98f9bf78",
+    "bytes": 15782439
+  },
+  {
+    "path": "vendor/agx_arm_sim/realsense2_description/meshes/plug.stl",
+    "sha256": "91a0bc6ec83fa24b5dcd4de0d1c0ed78032af2e7ed233b4b232bdbf906fea744",
+    "bytes": 292334
+  },
+  {
+    "path": "vendor/agx_arm_sim/realsense2_description/meshes/plug_collision.stl",
+    "sha256": "fc210c929bba2c9cf3f4ec074d4e6a38549904e9a1eddee9661f34ef7c610f5f",
+    "bytes": 11284
+  },
+  {
+    "path": "vendor/agx_arm_sim/realsense2_description/package.xml",
+    "sha256": "73c0fe593f574dd3cea0e57378c437c2671d3fdb2db2d32341d599799ee2be59",
+    "bytes": 1048
+  },
+  {
+    "path": "vendor/agx_arm_sim/realsense2_description/urdf/_d435.urdf.xacro",
+    "sha256": "db7ff24c900fd68d9841bd317d4b5077aa2fd3c1091fa2416f7a10048ba2132b",
+    "bytes": 7550
+  },
+  {
+    "path": "vendor/agx_arm_sim/realsense2_description/urdf/_materials.urdf.xacro",
+    "sha256": "11ad1502a90114a20f02f707744b84e001e6c1c1ba5026b2509bcbcd525e5d48",
+    "bytes": 1216
+  },
+  {
+    "path": "vendor/agx_arm_sim/realsense2_description/urdf/_usb_plug.urdf.xacro",
+    "sha256": "63e6c96710eeecde1a6c981dd6d88f1958b4f0f6d50b80dd8c30a35f0a001732",
+    "bytes": 1817
+  },
+  {
+    "path": "vendor/wbcd_urdf/meshes/base_link.dae",
+    "sha256": "8798b4d6c9beb16c63ab46a4adb2f659cd590ba9c84e8e6a22b6608ece9ecb20",
+    "bytes": 3702408
+  },
+  {
+    "path": "vendor/wbcd_urdf/meshes/camera_stand_link.dae",
+    "sha256": "16000f5991c7179d3e2f14dd684c261caea9426990360e9e4d37e861161b5d5f",
+    "bytes": 32206
+  },
+  {
+    "path": "vendor/wbcd_urdf/package.xml",
+    "sha256": "9a2ad5c355bfad6303c563e1d2889a1781e2674667040af83f4131018adc4703",
+    "bytes": 891
+  },
+  {
+    "path": "vendor/wbcd_urdf/urdf/dual_nero.xacro",
+    "sha256": "f0a863ba9a61605d2e674848910262e7d30742ef7eebf23cd2d4d931ea697a64",
+    "bytes": 947
+  },
+  {
+    "path": "vendor/wbcd_urdf/urdf/nero_gripper_d435.urdf",
+    "sha256": "ffd7ba618a532aed4bef459e5cebb8820a56365cf7d14f34bd681f140e6a6302",
+    "bytes": 14566
+  },
+  {
+    "path": "vendor/wbcd_urdf/urdf/test_d435_camera.urdf.xacro",
+    "sha256": "321ae3ac87834841611e82463a1813b3eef1160acddee1a3059a16185f1ef2db",
+    "bytes": 608
+  },
+  {
+    "path": "vendor/wbcd_urdf/urdf/wbcd_urdf.csv",
+    "sha256": "3c69fcb26d90cf0ca60ccc822f6a9353bb0e8104be12f18f0058eb3c3eacb657",
+    "bytes": 1924
+  },
+  {
+    "path": "vendor/wbcd_urdf/urdf/wbcd_urdf.urdf",
+    "sha256": "2778569e880c6f1223f2fa0c9fa91e94dfa25a1732207f419469987e6f9e047e",
+    "bytes": 2769
+  }
+]

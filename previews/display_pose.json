@@ -1,0 +1,16 @@
+{
+  "scope": "Visualization only; not a hardware startup pose.",
+  "joint_positions": {
+    "top_camera_stand_joint": 0.0,
+    "left_joint2": 1.2,
+    "left_joint3": -1.57,
+    "left_joint4": 1.0,
+    "left_gripper_joint1": 0.018,
+    "left_gripper_joint2": -0.018,
+    "right_joint2": 1.2,
+    "right_joint3": 1.57,
+    "right_joint4": 1.0,
+    "right_gripper_joint1": 0.018,
+    "right_gripper_joint2": -0.018
+  }
+}

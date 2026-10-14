@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+dist/
+*.egg-info/
+*.pyc
+logs/
+build/
+reference/
+previews/decoded_*.png
+previews/video_check_*.png

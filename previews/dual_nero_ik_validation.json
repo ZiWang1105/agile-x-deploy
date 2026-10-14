@@ -1,0 +1,99 @@
+{
+  "duration_s": 32,
+  "fps": 25,
+  "frames": 800,
+  "source": "Scripted RobotInterface targets; actuated MuJoCo simulation; no mouse capture",
+  "max_requested_speed_rad_s": 0.6000000000000005,
+  "max_requested_acceleration_rad_s2": 2.000000000000335,
+  "checks": [
+    {
+      "phase": "01 / DUAL-ARM TRANSLATION",
+      "position_mm": [
+        0.044563787080837726,
+        0.04456378286445016
+      ],
+      "orientation_deg": [
+        0.00421803918667842,
+        0.004218038424648432
+      ],
+      "grippers": [
+        1.0000000017973532,
+        0.9999999801011592
+      ]
+    },
+    {
+      "phase": "02 / ORIENTATION IK",
+      "position_mm": [
+        0.05982676658804906,
+        0.05982684290476823
+      ],
+      "orientation_deg": [
+        0.005861354252280075,
+        0.005861363286434047
+      ],
+      "grippers": [
+        0.9999998876475356,
+        1.0000000334567891
+      ]
+    },
+    {
+      "phase": "03 / LEFT GRIPPER",
+      "position_mm": [
+        0.059766712665083314,
+        0.05976678995084724
+      ],
+      "orientation_deg": [
+        0.005857938927409274,
+        0.005857947997482189
+      ],
+      "grippers": [
+        -2.6018383480578286e-08,
+        1.0000000259045487
+      ]
+    },
+    {
+      "phase": "04 / RIGHT GRIPPER",
+      "position_mm": [
+        0.05972075118959373,
+        0.05972082933104105
+      ],
+      "orientation_deg": [
+        0.005855227122016577,
+        0.005855236206977147
+      ],
+      "grippers": [
+        0.9999999326909327,
+        6.565405388242218e-08
+      ]
+    },
+    {
+      "phase": "06 / HOLD INTERRUPT",
+      "hold_drift_rad": 5.329070518200751e-15,
+      "settled_speed_rad_s": 5.142095014073987e-14
+    },
+    {
+      "phase": "07 / RESUME + RETURN",
+      "position_mm": [
+        0.00028479884459567525,
+        0.00028481431106985205
+      ],
+      "orientation_deg": [
+        2.8588623518056534e-05,
+        2.858982436649796e-05
+      ],
+      "grippers": [
+        0.9999999509048916,
+        0.9999998880980221
+      ]
+    },
+    {
+      "phase": "08 / FINAL HOLD",
+      "hold_drift_rad": 5.329070518200751e-15,
+      "settled_speed_rad_s": 5.1388270458194274e-14
+    }
+  ],
+  "limitations": "Contacts disabled; nominal CAD TCP; no hardware validation",
+  "encoded_frames": 800,
+  "encoded_duration_s": 32.0,
+  "bytes": 2676877
+}
