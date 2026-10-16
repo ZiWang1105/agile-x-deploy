@@ -1,12 +1,95 @@
 # NERO dual-arm interactive IK
 
-This workspace assembles the two user-supplied archives and provides an actuated MuJoCo simulation, a native interactive IK viewer, and a backend-independent robot API. Simulation and the receive-only physical joint mirror work locally. An explicitly armed, single-arm NERO 1.21 commissioning transport is implemented; its command path and independent viewer-timeout handling have been tested in simulation, and its unarmed physical feedback path has been tested on both arms. Physical enable, motion and stopping have not yet been tested. It is not a qualified general hardware teleoperation system.
+This workspace assembles the supplied dual-NERO stand and runs **AgileX's official QuestArmTeleop `ArmIK` solver with NERO defaults and an explicit `w_pos=40, w_ori=4` override**. Simulation and the explicitly armed single-arm hardware adapter share the same solver, TCP definition and robot interface. The official IK path has been tested in simulation; physical motion with this solver has not been tested. Earlier left-arm hardware motion used the previous local Jacobian solver. See [official IK provenance and validation](docs/OFFICIAL_IK.md).
 
-## Demo
+## Historical demo (previous IK)
 
 ![Dual NERO simulation demonstrating dual-arm translation and rotation, independent gripper control, HOLD, and resume](previews/dual_nero_ik_validation.gif)
 
-32-second simulation playback at 1× speed, with live TCP error readouts. Scripted targets use the same robot API as the interactive viewer; this is not a mouse recording. Contacts are disabled. [Watch the full-resolution MP4](previews/dual_nero_ik_validation.mp4).
+This existing GIF/MP4 predates the official IK migration and uses the old TCP and solver. It is not validation of the current solver. 32-second simulation playback at 1× speed, with live TCP error readouts. Scripted targets use the same robot API as the interactive viewer; this is not a mouse recording. Contacts are disabled. [Watch the full-resolution MP4](previews/dual_nero_ik_validation.mp4).
+
+## ZED 2i live camera stream
+
+Connect the camera over USB 3, then run:
+
+```bash
+cd ~/projects/agilex-deploy
+./scripts/setup_zed_stream.sh  # Once per checkout; installs into .venv-camera.
+./scripts/zed_stream.sh start
+```
+
+Open **http://127.0.0.1:8766** on the connected desktop. The page switches between
+left, right, and side-by-side stereo views. Capture is 2560 × 720 at 30 fps,
+giving 1280 × 720 per eye. This is raw UVC color; it does not require the ZED SDK
+and does not provide depth or calibrated/rectified imagery.
+
+```bash
+./scripts/zed_stream.sh status
+./scripts/zed_stream.sh logs
+./scripts/zed_stream.sh stop
+./scripts/zed_stream.sh restart
+```
+
+`start` creates an observable `agilex-zed-stream` systemd user service that stays
+running after the terminal closes. It is not installed for automatic startup at
+boot. Starting an already active service preserves it; use `restart` to apply
+code or option changes. For a foreground process, stop the service and run
+`./scripts/zed_stream.sh run`; Ctrl+C releases the camera.
+
+The stream automatically selects the only ZED capture device in `/dev/v4l/by-id`.
+If multiple cameras are present, select one explicitly:
+
+```bash
+./scripts/zed_stream.sh restart --device /dev/v4l/by-id/YOUR_ZED-video-index0 --port 8766
+```
+
+Endpoints on the same local server:
+
+| Endpoint | Result |
+|---|---|
+| `/` | Browser viewer |
+| `/stream.mjpg?view=left` | Live multipart JPEG stream |
+| `/snapshot.jpg?view=left` | Latest fresh JPEG frame |
+| `/status` | Capture health, frame age, sequence, measured fps, resolution, and device |
+
+Use `view=right` or `view=stereo` for the other images. No frames are recorded to
+disk. The server binds to loopback only. For remote viewing, forward the port
+with `ssh -N -L 8766:127.0.0.1:8766 USER@ROBOT_DESKTOP`, then open the same URL
+on the SSH client. Stop this stream before opening the camera in another program.
+If capture fails or frames become stale, image endpoints refuse stale snapshots;
+inspect `/status` and the logs, check the USB connection, then restart.
+
+Dependencies are pinned separately in `requirements-camera.txt`. The scripts
+use neither the IK environment nor robot control interfaces. Camera frames are
+not yet integrated into the robot observation API. The connected ZED 2i was
+verified at approximately 30 fps with all three image views and consecutive
+decodable MJPEG frames.
+
+## Calibrate the head camera
+
+The ZED calibration workflow plans a nine- or fifteen-pose single-arm route with official IK,
+records stationary images with measured joints, lets you select fixed 3D arm
+landmarks and their image pixels, then fits a candidate camera transform with
+held-out-pose validation. See [the calibration guide](docs/CAMERA_CALIBRATION.md).
+
+```bash
+./scripts/setup_camera_calibration.sh
+.venv-official/bin/python scripts/calibrate_camera.py demo --output logs/calibration/demo
+.venv-official/bin/python scripts/calibrate_camera.py annotate --dataset logs/calibration/demo/dataset.json
+```
+
+This opens an explicitly synthetic rehearsal dataset at http://127.0.0.1:8772.
+Real captures need this ZED's matching raw intrinsics. Physical route execution is
+separate and explicit; fitting never applies calibration or commands the arms.
+
+The [physical calibration archive](calibration/2026-10-15_zed35330610/README.md)
+includes raw images, measured joints, assistant-selected landmarks and calculated
+extrinsics for ZED serial `35330610`. The latest raised sequence has 15 captures
+and 132 observations: 4.521 px all-point RMS and 7.010 px worst held-out-pose RMS.
+**These extrinsics are candidates, not validated or applied to robot control.**
+The archive includes earlier results, annotation corrections and reproduction
+instructions. The [camera mount design](hardware/zed2i_mount/README.txt) includes
+printable STL, editable STEP and installation illustrations.
 
 ## Run interactive IK
 
@@ -14,14 +97,11 @@ Run in a desktop terminal:
 
 ```bash
 cd ~/projects/agilex-deploy
-uv venv --python 3.10 .venv  # First checkout only; reuse an existing environment.
-uv pip install --python .venv/bin/python -r requirements.txt
-uv pip install --python .venv/bin/python -e .
-.venv/bin/python scripts/build_assembly.py
-.venv/bin/agilex-interactive
+./scripts/setup_official_ik.sh  # First checkout: isolated Pinocchio/CasADi environment.
+./scripts/run_interactive.sh --backend sim
 ```
 
-Clone with `git clone https://github.com/ZiWang1105/agile-x-deploy.git agilex-deploy` to use the directory name above. The repository includes the source assets required by this assembly; the original upload archives are not needed to build it. Generated files in `build/` are ignored. `build/dual_nero.sim.xml` is generated automatically from the geometry model when absent.
+Clone with `git clone https://github.com/ZiWang1105/agile-x-deploy.git agilex-deploy` to use the directory name above. The repository includes the source assets required by this assembly; the original upload archives are not needed to build it. The setup uses `.venv-official` because standard pip Pinocchio wheels do not provide the required CasADi binding. The old `.venv` is preserved; missing official dependencies cause an explicit error, never a fallback solver. Generated files in `build/` are ignored. `build/dual_nero.sim.xml` is generated automatically from the geometry model when absent.
 
 - Double-click a red sphere to select a TCP target.
 - Hold **Ctrl + right mouse button** and drag to translate the target.
@@ -32,14 +112,14 @@ Clone with `git clone https://github.com/ZiWang1105/agile-x-deploy.git agilex-de
 
 Red spheres/axes are targets; small green markers are encoder-derived TCPs. The display reports position/orientation error and runtime state. The renderer has its own model; dragging robot geometry or using native Reset cannot reset or force the simulated plant. Native Reset requests HOLD.
 
-The CLI uses the active desktop's `DISPLAY`. On this machine, `DISPLAY=:1 .venv/bin/agilex-interactive` was tested successfully. Prefer the display variable supplied by your desktop session. The command stays in the foreground; no server or detached process is installed.
+The CLI uses the active desktop's `DISPLAY`. On this machine, `DISPLAY=:1 ./scripts/run_interactive.sh` was tested successfully. Prefer the display variable supplied by your desktop session. The command stays in the foreground; no server or detached process is installed.
 
 ## Live hardware mirror and IK preview
 
 On the commissioned desktop, with both CAN interfaces already configured at 1 Mbps:
 
 ```bash
-DISPLAY=:1 .venv/bin/agilex-interactive --backend real-preview
+DISPLAY=:1 ./scripts/run_interactive.sh --backend real-preview
 ```
 
 Blue arms show physical joint feedback. Translucent amber arms show simulated IK, initialized from the physical joint angles when the application starts. Drag the red EEF targets with the same controls as simulation. **Targets command only the preview simulator; this mode cannot enable or move hardware.** Press **M** to hide/show the amber preview and inspect the blue measured posture. Space/R stops only the simulation preview. Gripper controls are disabled and fingers are hidden because physical travel is not calibrated.
@@ -48,10 +128,10 @@ The reader resolves each arm by the confirmed USB serial in `configs/hardware_ma
 
 ```bash
 # Read a paired joint snapshot; sends no CAN data frames.
-.venv/bin/python -m agilex_deploy.can_feedback --output logs/commissioning/live_snapshot.json
+.venv-official/bin/python -m agilex_deploy.can_feedback --output logs/commissioning/live_snapshot.json
 
 # Test simulated IK from live joints and render a comparison image/report.
-MUJOCO_GL=egl .venv/bin/python scripts/validate_live_preview.py
+MUJOCO_GL=egl .venv-official/bin/python scripts/validate_live_preview.py
 ```
 
 See [hardware commissioning](docs/HARDWARE_COMMISSIONING.md) for the remaining steps before physical following.
@@ -61,7 +141,7 @@ See [hardware commissioning](docs/HARDWARE_COMMISSIONING.md) for the remaining s
 For full-workspace mouse control, start with both arms supported and disabled, clear the arm's movement area, then run:
 
 ```bash
-DISPLAY=:1 .venv/bin/agilex-interactive --backend real-commissioning --side left --workspace full
+DISPLAY=:1 ./scripts/run_interactive.sh --backend real-commissioning --side left --workspace full
 ```
 
 This starts **UNARMED**. E enables the selected arm holding its current posture. Double-click its red sphere, Ctrl+right-drag to translate, and Ctrl+left-drag to rotate. Full mode removes the radius, height floor, orientation cap and joint excursion cap relative to the arming pose. Full workspace is now the default. Joint position limits, live controller speed/acceleration limits, one-arm ownership and communication watchdogs remain. The old 0.03 rad/s, 0.1 rad/s², 5% firmware speed and arbitrary tracking-error caps are removed. It is not a collision-aware planner: the table, stand, opposite arm and other obstacles are not protected. An IK target may be unreachable even though the handle can be dragged there. Space requests HOLD; Q closes the controller and leaves motors enabled. To use the identical full-workspace controls without hardware access, replace `real-commissioning` with `commissioning-sim`.
@@ -79,8 +159,8 @@ Torque/current protection remains in the firmware, unchanged by this host. A num
 Practice the identical arming/UI workflow without opening CAN:
 
 ```bash
-DISPLAY=:1 .venv/bin/agilex-interactive --backend commissioning-sim --side left
-.venv/bin/python scripts/check_real_session.py  # Reads real feedback; never arms.
+DISPLAY=:1 ./scripts/run_interactive.sh --backend commissioning-sim --side left
+.venv-official/bin/python scripts/check_real_session.py  # Reads real feedback; never arms.
 ```
 
 The hardware control loop runs in an owned, joined child process. A viewer heartbeat gap over 200 ms latches HOLD independently of the viewer's Python GIL. This covers viewer failure; it is not a certified controller-level watchdog or proof of stopping after the control process, host, CAN link, or power fails.
@@ -102,22 +182,22 @@ The viewer uses the shared request path and does not command joints. The simulat
 
 ## Scope and validation
 
-This first controller uses damped Jacobian IK, not the official CasADi/IPOPT solver. Joint targets use source position bounds and per-joint speed/acceleration limits described above. Cartesian velocity clipping and fixed tracking-error thresholds are removed; damping and feedback gains remain part of the IK solver. HOLD cancels the target and captures the current position; it is a servo hold, not a physical emergency stop. Targets expire after 0.5 s without refresh. Stale feedback, bad joint ordering, controller faults, and control overruns cause a latched fault and backend HOLD.
+The controller loads the unmodified official `ArmIK` class (Pinocchio + CasADi + IPOPT) and the pinned NERO YAML. Its soft objective trades pose error against posture regularization and smoothing; submillimeter convergence is not promised. Joint targets use source position bounds and per-joint speed/acceleration limits described above. Cartesian velocity clipping and fixed tracking-error thresholds are removed; the optimization code is upstream, with `w_pos` changed from `2` to `40` and `w_ori` from `2` to `4` in `configs/ik.yaml` to reduce the persistent zero-posture bias. Official `w_reg=0.01`, `w_smooth=0.1`, joint bounds and solver settings are retained. HOLD cancels the target and captures the current position; it is a servo hold, not a physical emergency stop. Targets expire after 0.5 s without refresh. Stale feedback, bad joint ordering, controller faults, and control overruns cause a latched fault and backend HOLD.
 
-The simulator uses ideal gravity compensation. **Contacts and collision admission are not implemented.** It is suitable for free-space interactive IK, not grasp/contact validation or hardware execution. Source inertias and limits are unqualified. The nominal TCP is `[0, 0, 0.1358]` meters in each `*_gripper_base`, at the CAD finger-root plane; it is not a physically calibrated pinch frame. Top-camera orientation is preserved, and its bracket joint is fixed in the runtime model.
+The simulator uses ideal gravity compensation. **Contacts and collision admission are not implemented.** It is suitable for free-space interactive IK, not grasp/contact validation or hardware execution. Source inertias and limits are unqualified. The TCP follows the official NERO `ee`: `[0.1755, 0, -0.0235]` meters with zero RPY relative to each `joint7` child frame. Observation schema version 3 identifies this change from the previous TCP. Recreate targets from fresh observations; do not replay old TCP targets. This is a nominal official definition, not a measured tool calibration. Top-camera orientation is preserved, and its bracket joint is fixed in the runtime model.
 
 ```bash
-.venv/bin/python -m unittest discover -s tests -v
-MUJOCO_GL=egl .venv/bin/python scripts/smoke_ik.py
-.venv/bin/python scripts/validate_assembly.py
-.venv/bin/python examples/agent_policy.py
+.venv-official/bin/python -m unittest discover -s tests -v
+MUJOCO_GL=egl .venv-official/bin/python scripts/smoke_ik.py
+.venv-official/bin/python scripts/validate_assembly.py
+.venv-official/bin/python examples/agent_policy.py
 ```
 
 The automated suite covers paired 6D tracking, command limits, actuator-only motion, HOLD/resume, command expiry, stale feedback, invalid joint order, unreachable-target handling, gripper coupling, camera lock, Jacobian finite differences, drag/reset routing, thread/process cleanup, receive-only parsing, diagnostic request whitelists, startup setpoints before enable, nullable gripper capabilities, commissioning admission, and the independent viewer heartbeat watchdog. Command-path evidence uses simulated or in-memory transports; it does not establish physical stopping or collision clearance.
 
-`previews/interactive_ik.png` and `previews/interactive_ik_report.json` show a repeatable two-arm translation/rotation command. The native desktop window also passed a timed launch/render/close test. Actual human mouse manipulation has not been exercised by automation; handle event conversion is covered separately.
+`previews/official_ik.png` and `previews/official_ik_report.json` show the current official solver with local tuning: submillimeter position residual in the seven-second simulation. `previews/official_defaults_ik_report.json` preserves the original-default comparison (17.20 / 16.09 mm) using the same TCP and targets. These are modeled errors, not physical accuracy measurements. The older `interactive_ik` artifacts are historical. The native desktop window also passed a timed launch/render/close test. The tuned solver also passed a 165-second native desktop viewer check using X11 mouse/keyboard events: both handles translated, orientation dragging changed the target by about 14 degrees, and HOLD/resume and clean exit worked without a controller fault. Settled sampled position errors were 0.049–0.072 mm. See `previews/interactive_desktop_report.json`. This was automated desktop input, not a human mouse session or physical-robot test.
 
-The [32-second validation video](previews/dual_nero_ik_validation.mp4) shows translation, orientation tracking, independent gripper commands, HOLD during motion, and resume. Its target sequence uses the same robot API as the viewer. It is simulation-time playback, not a mouse recording. Reproduce it with `MUJOCO_GL=egl .venv/bin/python scripts/record_ik_validation.py`.
+The historical [32-second validation video](previews/dual_nero_ik_validation.mp4) shows translation, orientation tracking, independent gripper commands, HOLD during motion, and resume. Its target sequence uses the same robot API as the viewer. It is simulation-time playback, not a mouse recording. It is retained as evidence of the previous solver; use `scripts/smoke_ik.py` for current official-solver validation.
 
 The remainder documents the original geometry assembly and its provenance.
 
@@ -159,17 +239,16 @@ The approximately 90-degree values are retained as supplied, rather than silentl
 Python 3.10 was used. From this directory:
 
 ```bash
-uv venv --python 3.10 .venv
-uv pip install --python .venv/bin/python -r requirements.txt
-.venv/bin/python scripts/build_assembly.py
-.venv/bin/python scripts/validate_assembly.py
-MUJOCO_GL=egl .venv/bin/python scripts/preview_assembly.py
+./scripts/setup_official_ik.sh
+.venv-official/bin/python scripts/build_assembly.py
+.venv-official/bin/python scripts/validate_assembly.py
+MUJOCO_GL=egl .venv-official/bin/python scripts/preview_assembly.py
 ```
 
 For the standard local MuJoCo model inspector on a desktop with a display:
 
 ```bash
-.venv/bin/python scripts/preview_assembly.py --viewer
+.venv-official/bin/python scripts/preview_assembly.py --viewer
 ```
 
 The inspector uses MuJoCo's standard UI, including joint sliders. Only offscreen rendering and model/FK validation were exercised here; a desktop GUI session was not tested. Do not treat the preview as a dynamics simulation. Gravity and all contacts are disabled, and no actuators are defined.
@@ -191,7 +270,7 @@ AgileX's [QuestArmTeleop IK implementation](https://github.com/agilexrobotics/Qu
 
 The [dual-NERO launch](https://github.com/agilexrobotics/QuestArmTeleop/blob/ros2/src/oculus_reader/launch/teleop_double_nero.launch.py) runs one solver per arm. It does not implement one coupled 14-axis solver with stand and inter-arm collision constraints. In the inspected IK node, optional collision detection occurs after publishing the joint target; it is not an execution-blocking collision check. A smoothing objective also does not impose hard velocity, acceleration, or jerk bounds. The launch enables hardware automatically and selects fast mode; it was inspected only and was not run.
 
-The interactive prototype uses a separate damped Jacobian solver to establish the shared runtime without adding ROS/CasADi dependencies. The official optimization solver remains an offline comparison task; it has not been ported or benchmarked in this runtime. Whole-assembly collision admission, physical TCP calibration, and a commissioned driver remain prerequisites for hardware execution.
+The active runtime now uses the official optimization solver directly, without starting its ROS node or launch files. Installation uses Pinocchio 3.2.0 with CasADi support. Source hashes, exact parameters, the virtual-gripper compatibility fix and validation results are documented in [OFFICIAL_IK.md](docs/OFFICIAL_IK.md).
 
 ## Provenance
 

@@ -1,0 +1,237 @@
+{
+  "status": "review_required_not_applied",
+  "captures": 15,
+  "observations": 132,
+  "landmarks": 11,
+  "stationary_captures_accepted": 15,
+  "all_rms_px": 4.521045286926541,
+  "inlier_rms_px": 3.1285669813820904,
+  "inliers": 112,
+  "threshold_px": 6.0,
+  "worst_leave_one_pose_out_rms_px": 7.010417209150628,
+  "per_landmark": {
+    "hinge_screw": {
+      "count": 14,
+      "all_fit_rms_px": 6.989887198476217,
+      "leave_one_landmark_out_rms_px": 7.159705108358578
+    },
+    "rail_yneg_root": {
+      "count": 15,
+      "all_fit_rms_px": 4.407905500881701,
+      "leave_one_landmark_out_rms_px": 4.724934754599961
+    },
+    "rail_yneg_tip": {
+      "count": 15,
+      "all_fit_rms_px": 3.096069631511576,
+      "leave_one_landmark_out_rms_px": 3.6203108269853024
+    },
+    "rail_ypos_root": {
+      "count": 15,
+      "all_fit_rms_px": 3.3663033823257846,
+      "leave_one_landmark_out_rms_px": 3.9038192073182927
+    },
+    "rail_ypos_tip": {
+      "count": 15,
+      "all_fit_rms_px": 3.70843793445177,
+      "leave_one_landmark_out_rms_px": 4.425406786637852
+    },
+    "white_screw": {
+      "count": 14,
+      "all_fit_rms_px": 4.129165849612016,
+      "leave_one_landmark_out_rms_px": 5.278986694520198
+    },
+    "window_a": {
+      "count": 9,
+      "all_fit_rms_px": 7.957762235229526,
+      "leave_one_landmark_out_rms_px": 8.047085470873924
+    },
+    "window_b": {
+      "count": 9,
+      "all_fit_rms_px": 2.7554172490570994,
+      "leave_one_landmark_out_rms_px": 2.977270634510055
+    },
+    "window_c": {
+      "count": 9,
+      "all_fit_rms_px": 2.5024276330395607,
+      "leave_one_landmark_out_rms_px": 2.6330475273305893
+    },
+    "window_d": {
+      "count": 9,
+      "all_fit_rms_px": 4.9407389524679886,
+      "leave_one_landmark_out_rms_px": 5.388551823607707
+    },
+    "wing_screw": {
+      "count": 8,
+      "all_fit_rms_px": 2.4880168088698986,
+      "leave_one_landmark_out_rms_px": 3.806372405809871
+    }
+  },
+  "background_tracking_relative_to_pose_2": [
+    {
+      "pose_number": 1,
+      "tracked_points": 91,
+      "median_shift_px": [
+        -0.0447998046875,
+        -0.01955413818359375
+      ],
+      "p90_displacement_px": 0.47284403443336487
+    },
+    {
+      "pose_number": 2,
+      "tracked_points": 94,
+      "median_shift_px": [
+        0.0,
+        0.0
+      ],
+      "p90_displacement_px": 0.0
+    },
+    {
+      "pose_number": 3,
+      "tracked_points": 92,
+      "median_shift_px": [
+        -0.00927734375,
+        -0.000438690185546875
+      ],
+      "p90_displacement_px": 0.1872529238462448
+    },
+    {
+      "pose_number": 4,
+      "tracked_points": 94,
+      "median_shift_px": [
+        -0.01025390625,
+        0.02117919921875
+      ],
+      "p90_displacement_px": 0.20126722753047943
+    },
+    {
+      "pose_number": 5,
+      "tracked_points": 92,
+      "median_shift_px": [
+        -0.004547119140625,
+        -0.0111846923828125
+      ],
+      "p90_displacement_px": 0.16192001104354858
+    },
+    {
+      "pose_number": 6,
+      "tracked_points": 94,
+      "median_shift_px": [
+        -0.011932373046875,
+        -0.00638580322265625
+      ],
+      "p90_displacement_px": 0.15368115901947021
+    },
+    {
+      "pose_number": 7,
+      "tracked_points": 92,
+      "median_shift_px": [
+        -0.018798828125,
+        0.01148223876953125
+      ],
+      "p90_displacement_px": 0.18552367389202118
+    },
+    {
+      "pose_number": 8,
+      "tracked_points": 92,
+      "median_shift_px": [
+        -0.009674072265625,
+        -0.0046672821044921875
+      ],
+      "p90_displacement_px": 0.14135758578777313
+    },
+    {
+      "pose_number": 9,
+      "tracked_points": 92,
+      "median_shift_px": [
+        -0.012664794921875,
+        0.00063323974609375
+      ],
+      "p90_displacement_px": 0.16688579320907593
+    },
+    {
+      "pose_number": 10,
+      "tracked_points": 93,
+      "median_shift_px": [
+        -0.01422119140625,
+        0.023193359375
+      ],
+      "p90_displacement_px": 0.1602506786584854
+    },
+    {
+      "pose_number": 11,
+      "tracked_points": 92,
+      "median_shift_px": [
+        -0.022247314453125,
+        0.021869659423828125
+      ],
+      "p90_displacement_px": 0.1864188313484192
+    },
+    {
+      "pose_number": 12,
+      "tracked_points": 92,
+      "median_shift_px": [
+        -0.011871337890625,
+        0.0258026123046875
+      ],
+      "p90_displacement_px": 0.1620497703552246
+    },
+    {
+      "pose_number": 13,
+      "tracked_points": 92,
+      "median_shift_px": [
+        -0.006378173828125,
+        0.0194549560546875
+      ],
+      "p90_displacement_px": 0.1835467517375946
+    },
+    {
+      "pose_number": 14,
+      "tracked_points": 92,
+      "median_shift_px": [
+        -0.01593017578125,
+        0.03328704833984375
+      ],
+      "p90_displacement_px": 0.1876097023487091
+    },
+    {
+      "pose_number": 15,
+      "tracked_points": 93,
+      "median_shift_px": [
+        -0.00506591796875,
+        0.0271148681640625
+      ],
+      "p90_displacement_px": 0.1470661610364914
+    }
+  ],
+  "robot_commands_sent_during_analysis": false,
+  "active_configuration_changed": false,
+  "observations_per_pose": [
+    11,
+    11,
+    6,
+    11,
+    7,
+    6,
+    6,
+    7,
+    11,
+    11,
+    10,
+    10,
+    8,
+    6,
+    11
+  ],
+  "findings": [
+    "The 15 stationary captures and image hashes passed dataset validation.",
+    "Annotations are assistant visual selections; the user did not click points.",
+    "Pose-one rail selection initially confused a background bracket with the rail endpoint; revision history preserves the correction.",
+    "Rail end-cap front/side edge ambiguity affected several initial annotations.",
+    "Window lower-left edge can be an occluding wing silhouette rather than the same rigid CAD corner; it remains provisional.",
+    "Wrist barrel screw correspondence remains less consistent than wing and forearm screw observations.",
+    "The 40-observation wrist subset is a diagnostic selected after feature review, not independent proof of calibration accuracy.",
+    "No camera intrinsics, joint offsets, kinematic dimensions, or CAD landmark coordinates were optimized.",
+    "Pixel residuals are not an independent millimeter accuracy measurement; this candidate is not ready to apply."
+  ],
+  "next_step": "Resolve occlusion-dependent gap corners and wrist screw CAD correspondence using the existing captures before requesting additional robot motion."
+}

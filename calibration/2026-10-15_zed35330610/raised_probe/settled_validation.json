@@ -1,0 +1,9 @@
+{
+  "completed_waypoints": 20,
+  "capture_poses": 14,
+  "max_settled_position_error_mm": 0.05315643989719839,
+  "current_start_max_difference_deg": 0.0,
+  "enabled_joint_count": 0,
+  "physical_commands_sent": 0,
+  "collision_clearance_qualified": false
+}

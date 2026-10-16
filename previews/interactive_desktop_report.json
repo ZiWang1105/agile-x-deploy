@@ -1,0 +1,194 @@
+{
+  "test": "Native MuJoCo desktop viewer with X11 mouse/keyboard events",
+  "display": ":1",
+  "backend": "SimBackend",
+  "hardware_commands": false,
+  "parameters": {
+    "robot_description_package": "agx_arm_description",
+    "urdf_relative_path": "agx_arm_urdf/nero/urdf/nero_with_gripper_description.urdf",
+    "locked_joints": [
+      "gripper_base_joint",
+      "gripper_joint1",
+      "gripper_joint2"
+    ],
+    "ee_parent_joint": "joint7",
+    "ee_frame_name": "ee",
+    "output_joint_names": [
+      "joint1",
+      "joint2",
+      "joint3",
+      "joint4",
+      "joint5",
+      "joint6",
+      "joint7"
+    ],
+    "tool_pre_rot_rpy": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "tool_translation_xyz": [
+      0.1755,
+      0.0,
+      -0.0235
+    ],
+    "collision_pairs_flat": [
+      3,
+      2,
+      5,
+      0,
+      5,
+      1,
+      6,
+      0,
+      6,
+      1
+    ],
+    "enable_collision_check": false,
+    "w_pos": 40.0,
+    "w_ori": 4.0,
+    "w_reg": 0.01,
+    "w_smooth": 0.1,
+    "ipopt_max_iter": 50,
+    "ipopt_tol": 0.0001,
+    "enable_visualization": false,
+    "viewer_open_browser": false,
+    "viewer_model_name": "pinocchio",
+    "viewer_target_frame_name": "ee_target",
+    "viewer_axis_length": 0.1,
+    "viewer_axis_width": 10.0,
+    "pose_stamped_topic": "/delta_pose",
+    "feedback_joint_topic": "/feedback/joint_states",
+    "pin_joint_status_topic": "/control/joint_states"
+  },
+  "checks": {
+    "both_handles_translate": true,
+    "orientation_drag": true,
+    "hold_and_resume": true,
+    "clean_exit": true,
+    "faults": 0
+  },
+  "duration_s": 165.17599067196716,
+  "settled_segments": [
+    {
+      "request_id": 27,
+      "settled_errors": {
+        "left": {
+          "position_mm": 2.5796638805939847e-12,
+          "orientation_deg": 4.97187437078195e-13
+        },
+        "right": {
+          "position_mm": 0.04918659789456467,
+          "orientation_deg": 0.04858850724923098
+        }
+      },
+      "target_offset_from_start_mm": {
+        "left": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "right": [
+          0.0,
+          0.0,
+          93.41662586724738
+        ]
+      },
+      "target_rotation_from_start_deg": {
+        "left": 0.0,
+        "right": 9.705904402041652e-15
+      }
+    },
+    {
+      "request_id": 176,
+      "settled_errors": {
+        "left": {
+          "position_mm": 0.05297971777232103,
+          "orientation_deg": 0.05120192543858897
+        },
+        "right": {
+          "position_mm": 0.04918647168999952,
+          "orientation_deg": 0.0485888582385982
+        }
+      },
+      "target_offset_from_start_mm": {
+        "left": [
+          0.0,
+          0.0,
+          132.71426914373663
+        ],
+        "right": [
+          0.0,
+          0.0,
+          93.41662586724738
+        ]
+      },
+      "target_rotation_from_start_deg": {
+        "left": 1.5438800323436057e-14,
+        "right": 9.705904402041652e-15
+      }
+    },
+    {
+      "request_id": 479,
+      "settled_errors": {
+        "left": {
+          "position_mm": 0.05510868600550662,
+          "orientation_deg": 0.05375365990838529
+        },
+        "right": {
+          "position_mm": 0.0,
+          "orientation_deg": 0.0
+        }
+      },
+      "target_offset_from_start_mm": {
+        "left": [
+          -47.94813388072794,
+          -48.376359605645625,
+          132.6769790216107
+        ],
+        "right": [
+          0.026798354595736207,
+          -0.02132621000799917,
+          93.3813221853577
+        ]
+      },
+      "target_rotation_from_start_deg": {
+        "left": 0.051201925438603434,
+        "right": 0.04858885823859373
+      }
+    },
+    {
+      "request_id": 1182,
+      "settled_errors": {
+        "left": {
+          "position_mm": 0.07173958425450123,
+          "orientation_deg": 0.07338164704373125
+        },
+        "right": {
+          "position_mm": 0.0,
+          "orientation_deg": 0.0
+        }
+      },
+      "target_offset_from_start_mm": {
+        "left": [
+          -48.293395526486314,
+          -48.97332979140706,
+          132.6769790216107
+        ],
+        "right": [
+          0.026798354595736207,
+          -0.02132621000799917,
+          93.3813221853577
+        ]
+      },
+      "target_rotation_from_start_deg": {
+        "left": 13.952685049485112,
+        "right": 0.04858885823859373
+      }
+    }
+  ],
+  "observation_samples": 1583,
+  "hold_events": 2,
+  "final_mode": "hold",
+  "limitations": "Automated OS input, not a human mouse session; sampled poses only; no physical motion or collision qualification."
+}

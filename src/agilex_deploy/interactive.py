@@ -23,6 +23,7 @@ from .contract import Action, ArmTarget, Pose, SIDES, JOINT_NAMES, RobotInterfac
 from .controller import pose_error
 from .model import Kinematics, MODEL_PATH, ROOT
 from .nero_transport import MAX_TRANSLATION_M, TEST_LIFT_M, validate_workspace_radius
+from .official_config import solver_parameters
 
 
 @contextmanager
@@ -209,7 +210,8 @@ def run_viewer(robot: RobotInterface, duration=None, log_path=None, on_ready=Non
 
     if hardware_control:
         log("session_config", side=robot.side, simulation=robot.simulation,
-            workspace_radius_m=workspace_radius_m)
+            workspace_radius_m=workspace_radius_m, ik="AgileX QuestArmTeleop ArmIK",
+            ik_parameters=solver_parameters(), observation_schema_version=3)
 
     try:
         with managed_viewer(kin.model, kin.data, key_callback=events.put,
@@ -353,7 +355,7 @@ def run_viewer(robot: RobotInterface, duration=None, log_path=None, on_ready=Non
                 text += "\nGripper travel L/R: " + " / ".join("unavailable" if g is None else f"{g:.2f}" for g in observed.gripper_position)
                 if not fresh or observed.mode == "fault" or hardware_fault:
                     text += "\nFeedback stale or fault latched. Restart after inspection."
-                title = "DUAL NERO | Interactive IK"
+                title = "DUAL NERO | Official AgileX IK"
                 footer = "Space / R: HOLD | 1 / 2: grippers | Q: quit\nSimulation prototype: contacts disabled; TCP is nominal CAD frame"
                 if feedback is not None:
                     title = "DUAL NERO | REAL FEEDBACK + SIM IK | NO HARDWARE COMMANDS"
@@ -451,11 +453,14 @@ def _main():
         return
     if args.backend == "real-preview":
         from .can_feedback import PassiveCanFeedback
+        from .official_ik import OfficialDualIK
+        from .model import initial_positions
+        ik = OfficialDualIK(Kinematics(), initial_positions())
         with PassiveCanFeedback(args.mapping) as feedback:
             sample = feedback.read(timeout=1.)
             print("Receive-only hardware mapping:", feedback.channels, flush=True)
             print("Drag targets control SIMULATION ONLY. No hardware command path is connected.", flush=True)
-            with Robot(SimBackend(joint_positions=sample.positions)) as robot:
+            with Robot(SimBackend(joint_positions=sample.positions), ik=ik) as robot:
                 run_viewer(robot, duration=args.duration, log_path=args.log,
                            on_ready=robot.start, feedback=feedback)
                 if robot.observe().mode == "fault":

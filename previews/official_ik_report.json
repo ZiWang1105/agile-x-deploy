@@ -1,0 +1,169 @@
+{
+  "solver": "AgileX QuestArmTeleop ArmIK",
+  "parameters": {
+    "robot_description_package": "agx_arm_description",
+    "urdf_relative_path": "agx_arm_urdf/nero/urdf/nero_with_gripper_description.urdf",
+    "locked_joints": [
+      "gripper_base_joint",
+      "gripper_joint1",
+      "gripper_joint2"
+    ],
+    "ee_parent_joint": "joint7",
+    "ee_frame_name": "ee",
+    "output_joint_names": [
+      "joint1",
+      "joint2",
+      "joint3",
+      "joint4",
+      "joint5",
+      "joint6",
+      "joint7"
+    ],
+    "tool_pre_rot_rpy": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "tool_translation_xyz": [
+      0.1755,
+      0.0,
+      -0.0235
+    ],
+    "collision_pairs_flat": [
+      3,
+      2,
+      5,
+      0,
+      5,
+      1,
+      6,
+      0,
+      6,
+      1
+    ],
+    "enable_collision_check": false,
+    "w_pos": 40.0,
+    "w_ori": 4.0,
+    "w_reg": 0.01,
+    "w_smooth": 0.1,
+    "ipopt_max_iter": 50,
+    "ipopt_tol": 0.0001,
+    "enable_visualization": false,
+    "viewer_open_browser": false,
+    "viewer_model_name": "pinocchio",
+    "viewer_target_frame_name": "ee_target",
+    "viewer_axis_length": 0.1,
+    "viewer_axis_width": 10.0,
+    "pose_stamped_topic": "/delta_pose",
+    "feedback_joint_topic": "/feedback/joint_states",
+    "pin_joint_status_topic": "/control/joint_states"
+  },
+  "upstream_parameters": {
+    "robot_description_package": "agx_arm_description",
+    "urdf_relative_path": "agx_arm_urdf/nero/urdf/nero_with_gripper_description.urdf",
+    "locked_joints": [
+      "gripper_base_joint",
+      "gripper_joint1",
+      "gripper_joint2"
+    ],
+    "ee_parent_joint": "joint7",
+    "ee_frame_name": "ee",
+    "output_joint_names": [
+      "joint1",
+      "joint2",
+      "joint3",
+      "joint4",
+      "joint5",
+      "joint6",
+      "joint7"
+    ],
+    "tool_pre_rot_rpy": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "tool_translation_xyz": [
+      0.1755,
+      0.0,
+      -0.0235
+    ],
+    "collision_pairs_flat": [
+      3,
+      2,
+      5,
+      0,
+      5,
+      1,
+      6,
+      0,
+      6,
+      1
+    ],
+    "enable_collision_check": false,
+    "w_pos": 2.0,
+    "w_ori": 2.0,
+    "w_reg": 0.01,
+    "w_smooth": 0.1,
+    "ipopt_max_iter": 50,
+    "ipopt_tol": 0.0001,
+    "enable_visualization": false,
+    "viewer_open_browser": false,
+    "viewer_model_name": "pinocchio",
+    "viewer_target_frame_name": "ee_target",
+    "viewer_axis_length": 0.1,
+    "viewer_axis_width": 10.0,
+    "pose_stamped_topic": "/delta_pose",
+    "feedback_joint_topic": "/feedback/joint_states",
+    "pin_joint_status_topic": "/control/joint_states"
+  },
+  "source": "145b80360cf2c5f2e63179086d0aab2cb563826c",
+  "simulation_seconds": 7,
+  "target": {
+    "left": {
+      "position_m": [
+        0.43220595814682694,
+        0.417574216424137,
+        0.14631032014494744
+      ],
+      "quaternion_xyzw": [
+        0.7617319395848344,
+        0.31963595052600147,
+        -0.20264527860508186,
+        0.5258632925074108
+      ],
+      "gripper_open": 1
+    },
+    "right": {
+      "position_m": [
+        0.43220598177128006,
+        -0.4175742130763723,
+        0.1463103481828978
+      ],
+      "quaternion_xyzw": [
+        0.5099529873834753,
+        0.2567176814471763,
+        -0.24058996454989012,
+        0.7849588853238988
+      ],
+      "gripper_open": 1
+    }
+  },
+  "errors": {
+    "left": {
+      "position_mm": 0.045748490987974275,
+      "orientation_deg": 0.04252939516167401
+    },
+    "right": {
+      "position_mm": 0.042910982284069255,
+      "orientation_deg": 0.042244803861853995
+    }
+  },
+  "tick_ms": {
+    "p50": 4.411728004924953,
+    "p95": 7.456092303618788,
+    "max": 10.857367014978081
+  },
+  "max_requested_velocity_rad_s": 1.1852862215070092,
+  "max_requested_acceleration_rad_s2": 2.500000000000835,
+  "notes": "Unmodified official IK with explicit configs/ik.yaml tuning. Actuated dynamics, ideal gravity compensation, contacts disabled; no hardware test."
+}

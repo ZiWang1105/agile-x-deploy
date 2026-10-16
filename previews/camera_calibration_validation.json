@@ -1,0 +1,57 @@
+{
+  "scope": "Synthetic and simulation validation only; no physical motion or extrinsic calibration performed.",
+  "unit_tests_passed": 12,
+  "synthetic_ground_truth_check": {
+    "translation_error_mm": 0.1849349719443539,
+    "rotation_error_deg": 0.010181923333114228,
+    "all_rms_px": 0.49775761604678753,
+    "correspondences": 178,
+    "T_base_from_camera_truth": [
+      [
+        0.0,
+        0.7071067811865476,
+        -0.7071067811865475,
+        0.85
+      ],
+      [
+        1.0,
+        -0.0,
+        0.0,
+        0.0
+      ],
+      [
+        -0.0,
+        -0.7071067811865475,
+        -0.7071067811865476,
+        1.1
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "synthetic": true
+  },
+  "held_out_pose_rms_px": [
+    0.5232600210856919,
+    0.39839219226533096,
+    0.5321859876550542,
+    0.5491204903536958,
+    0.4864427551585533,
+    0.5387111248918676
+  ],
+  "simulation_waypoints_completed": 9,
+  "max_simulation_position_error_mm": 0.04534264296788167,
+  "browser_checks": {
+    "model_surface_picking": true,
+    "original_image_coordinate_mapping": true,
+    "pose_switching": true,
+    "fit_and_held_out_validation": true,
+    "javascript_errors": []
+  },
+  "physical_timing_qualified": false,
+  "active_extrinsics_changed": false,
+  "live_stream_frame_metadata_verified": true
+}

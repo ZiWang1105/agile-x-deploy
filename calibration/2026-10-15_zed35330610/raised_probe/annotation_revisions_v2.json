@@ -1,0 +1,374 @@
+[
+  {
+    "pose_id": "pose_6adea95ba8f0",
+    "anchor_id": "rail_ypos_tip",
+    "old_uv": [
+      319,
+      256
+    ],
+    "new_uv": [
+      338,
+      257
+    ]
+  },
+  {
+    "pose_id": "pose_6adea95ba8f0",
+    "anchor_id": "rail_ypos_root",
+    "old_uv": [
+      313,
+      291
+    ],
+    "new_uv": [
+      332,
+      283
+    ]
+  },
+  {
+    "pose_id": "pose_6adea95ba8f0",
+    "anchor_id": "rail_yneg_tip",
+    "old_uv": [
+      572,
+      277
+    ],
+    "new_uv": [
+      567,
+      276
+    ]
+  },
+  {
+    "pose_id": "pose_6adea95ba8f0",
+    "anchor_id": "rail_yneg_root",
+    "old_uv": [
+      570,
+      309
+    ],
+    "new_uv": [
+      563,
+      301
+    ]
+  },
+  {
+    "pose_id": "pose_29e84768fdb3",
+    "anchor_id": "rail_ypos_tip",
+    "old_uv": [
+      430,
+      179
+    ],
+    "new_uv": [
+      430,
+      177
+    ]
+  },
+  {
+    "pose_id": "pose_29e84768fdb3",
+    "anchor_id": "rail_ypos_root",
+    "old_uv": [
+      423,
+      210
+    ],
+    "new_uv": [
+      425,
+      201
+    ]
+  },
+  {
+    "pose_id": "pose_29e84768fdb3",
+    "anchor_id": "rail_yneg_tip",
+    "old_uv": [
+      657,
+      192
+    ],
+    "new_uv": [
+      655,
+      191
+    ]
+  },
+  {
+    "pose_id": "pose_29e84768fdb3",
+    "anchor_id": "rail_yneg_root",
+    "old_uv": [
+      656,
+      226
+    ],
+    "new_uv": [
+      652,
+      216
+    ]
+  },
+  {
+    "pose_id": "pose_4dcfa92c556e",
+    "anchor_id": "rail_ypos_tip",
+    "old_uv": [
+      264,
+      179
+    ],
+    "new_uv": [
+      264,
+      180
+    ]
+  },
+  {
+    "pose_id": "pose_4dcfa92c556e",
+    "anchor_id": "rail_ypos_root",
+    "old_uv": [
+      258,
+      204
+    ],
+    "new_uv": [
+      258,
+      199
+    ]
+  },
+  {
+    "pose_id": "pose_4dcfa92c556e",
+    "anchor_id": "rail_yneg_tip",
+    "old_uv": [
+      488,
+      192
+    ],
+    "new_uv": [
+      481,
+      191
+    ]
+  },
+  {
+    "pose_id": "pose_4dcfa92c556e",
+    "anchor_id": "rail_yneg_root",
+    "old_uv": [
+      487,
+      226
+    ],
+    "new_uv": [
+      475,
+      216
+    ]
+  },
+  {
+    "pose_id": "pose_a6925a714a55",
+    "anchor_id": "rail_yneg_root",
+    "old_uv": [
+      560,
+      279
+    ],
+    "new_uv": [
+      557,
+      273
+    ]
+  },
+  {
+    "pose_id": "pose_c7c2a5408aee",
+    "anchor_id": "rail_yneg_tip",
+    "old_uv": [
+      563,
+      139
+    ],
+    "new_uv": [
+      560,
+      137
+    ]
+  },
+  {
+    "pose_id": "pose_c7c2a5408aee",
+    "anchor_id": "rail_yneg_root",
+    "old_uv": [
+      562,
+      178
+    ],
+    "new_uv": [
+      558,
+      173
+    ]
+  },
+  {
+    "pose_id": "pose_93ac0c6c9c56",
+    "anchor_id": "rail_yneg_tip",
+    "old_uv": [
+      617,
+      171
+    ],
+    "new_uv": [
+      615,
+      170
+    ]
+  },
+  {
+    "pose_id": "pose_93ac0c6c9c56",
+    "anchor_id": "rail_yneg_root",
+    "old_uv": [
+      617,
+      214
+    ],
+    "new_uv": [
+      612,
+      196
+    ]
+  },
+  {
+    "pose_id": "pose_9ac734046acc",
+    "anchor_id": "rail_yneg_tip",
+    "old_uv": [
+      531,
+      236
+    ],
+    "new_uv": [
+      525,
+      237
+    ]
+  },
+  {
+    "pose_id": "pose_9ac734046acc",
+    "anchor_id": "rail_yneg_root",
+    "old_uv": [
+      530,
+      262
+    ],
+    "new_uv": [
+      523,
+      258
+    ]
+  },
+  {
+    "pose_id": "pose_5ac7df7d1d32",
+    "anchor_id": "rail_yneg_tip",
+    "old_uv": [
+      606,
+      137
+    ],
+    "new_uv": [
+      607,
+      123
+    ]
+  },
+  {
+    "pose_id": "pose_5ac7df7d1d32",
+    "anchor_id": "rail_yneg_root",
+    "old_uv": [
+      613,
+      162
+    ],
+    "new_uv": [
+      607,
+      151
+    ]
+  },
+  {
+    "pose_id": "pose_137da8928686",
+    "anchor_id": "rail_yneg_tip",
+    "old_uv": [
+      501,
+      221
+    ],
+    "new_uv": [
+      500,
+      220
+    ]
+  },
+  {
+    "pose_id": "pose_137da8928686",
+    "anchor_id": "rail_yneg_root",
+    "old_uv": [
+      496,
+      260
+    ],
+    "new_uv": [
+      486,
+      248
+    ]
+  },
+  {
+    "pose_id": "pose_f26483e268e5",
+    "anchor_id": "rail_yneg_root",
+    "old_uv": [
+      658,
+      311
+    ],
+    "new_uv": [
+      656,
+      305
+    ]
+  },
+  {
+    "pose_id": "pose_79c77544ee58",
+    "anchor_id": "rail_yneg_tip",
+    "old_uv": [
+      483,
+      279
+    ],
+    "new_uv": [
+      477,
+      280
+    ]
+  },
+  {
+    "pose_id": "pose_79c77544ee58",
+    "anchor_id": "rail_yneg_root",
+    "old_uv": [
+      482,
+      310
+    ],
+    "new_uv": [
+      473,
+      303
+    ]
+  },
+  {
+    "pose_id": "pose_2bec6b3e49fe",
+    "anchor_id": "rail_yneg_tip",
+    "old_uv": [
+      582,
+      304
+    ],
+    "new_uv": [
+      577,
+      303
+    ]
+  },
+  {
+    "pose_id": "pose_2bec6b3e49fe",
+    "anchor_id": "rail_yneg_root",
+    "old_uv": [
+      580,
+      329
+    ],
+    "new_uv": [
+      574,
+      325
+    ]
+  },
+  {
+    "pose_id": "pose_ba541cad2ea9",
+    "anchor_id": "rail_yneg_tip",
+    "old_uv": [
+      550,
+      267
+    ],
+    "new_uv": [
+      550,
+      265
+    ]
+  },
+  {
+    "pose_id": "pose_ba541cad2ea9",
+    "anchor_id": "rail_yneg_root",
+    "old_uv": [
+      563,
+      297
+    ],
+    "new_uv": [
+      549,
+      285
+    ]
+  },
+  {
+    "pose_id": "pose_6696b3cd68b7",
+    "anchor_id": "rail_yneg_root",
+    "old_uv": [
+      612,
+      250
+    ],
+    "new_uv": [
+      610,
+      244
+    ]
+  }
+]

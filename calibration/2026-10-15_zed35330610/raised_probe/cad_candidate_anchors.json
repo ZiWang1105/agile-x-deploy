@@ -1,0 +1,83 @@
+{
+  "window_a": {
+    "body": "left_link6",
+    "local_xyz_m": [
+      0.017568421034660466,
+      0.019640380564904712,
+      0.013285662510164269
+    ],
+    "selection": "MuJoCo visual-mesh ray intersection"
+  },
+  "window_b": {
+    "body": "left_gripper_flange",
+    "local_xyz_m": [
+      0.009311568083129431,
+      0.023655417190508985,
+      -0.00039389202367318165
+    ],
+    "selection": "MuJoCo visual-mesh ray intersection"
+  },
+  "window_c": {
+    "body": "left_link6",
+    "local_xyz_m": [
+      0.016685604676728447,
+      -0.021923450271049208,
+      0.014036082842189752
+    ],
+    "selection": "MuJoCo visual-mesh ray intersection"
+  },
+  "window_d": {
+    "body": "left_gripper_flange",
+    "local_xyz_m": [
+      -0.010528189868077005,
+      -0.023463965996097638,
+      -0.0016626558796992107
+    ],
+    "selection": "MuJoCo visual-mesh ray intersection"
+  },
+  "wing_screw": {
+    "body": "left_link6",
+    "local_xyz_m": [
+      0.0006581652090556954,
+      0.00042414708748249417,
+      0.02589627844570278
+    ],
+    "selection": "MuJoCo visual-mesh ray intersection"
+  },
+  "hinge_screw": {
+    "body": "left_link6",
+    "local_xyz_m": [
+      -0.020139981785714568,
+      -0.023098779878891265,
+      0.013064779569204644
+    ],
+    "selection": "MuJoCo visual-mesh ray intersection"
+  },
+  "white_screw": {
+    "body": "left_link5",
+    "local_xyz_m": [
+      0.02593712570790002,
+      0.0018621807731401044,
+      -0.0607174351154667
+    ],
+    "selection": "MuJoCo visual-mesh ray intersection"
+  },
+  "flange_screw_a": {
+    "body": "left_gripper_flange",
+    "local_xyz_m": [
+      -0.013403196648152647,
+      0.016790241312968215,
+      0.007599162939769847
+    ],
+    "selection": "MuJoCo visual-mesh ray intersection"
+  },
+  "flange_screw_b": {
+    "body": "left_gripper_base",
+    "local_xyz_m": [
+      -0.012294416786191883,
+      -0.013935276687992769,
+      0.0023543838992984467
+    ],
+    "selection": "MuJoCo visual-mesh ray intersection"
+  }
+}

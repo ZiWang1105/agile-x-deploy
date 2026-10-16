@@ -19,12 +19,13 @@ from scipy.spatial.transform import Rotation
 
 from agilex_deploy import Action, ArmTarget, Pose, Robot
 from agilex_deploy.backends import SimBackend
-from agilex_deploy.controller import pose_error
+from agilex_deploy.controller import pose_error, MAX_VELOCITY, MAX_ACCELERATION
 from agilex_deploy.interactive import make_display, write_handles
 from agilex_deploy.model import ROOT
+from agilex_deploy.official_config import solver_parameters
 
 FPS, WIDTH, HEIGHT = 25, 1440, 900
-OUTPUT = ROOT / "previews/dual_nero_ik_validation.mp4"
+OUTPUT = ROOT / "previews/official_nero_ik_validation.mp4"
 PHASES = [
     (0, "READY / HOLD", "Measured startup pose"),
     (160, "01 / DUAL-ARM TRANSLATION", "Move forward and upward; open both grippers"),
@@ -75,8 +76,10 @@ def execute():
                     rotations = [float(np.degrees(np.linalg.norm(e[3:]))) for e in residuals]
                     checks.append(dict(phase=PHASES[phase_index][1], position_mm=positions,
                                        orientation_deg=rotations, grippers=list(observed.gripper_position)))
-                    assert max(positions) < 2., checks[-1]
-                    assert max(rotations) < 1., checks[-1]
+                    # Official NERO weights use soft pose costs. Record the
+                    # residual instead of asserting the old solver's accuracy.
+                    assert np.all(np.isfinite(positions + rotations)), checks[-1]
+                    assert max(positions) < 1.0 and max(rotations) < .1, checks[-1]
                     expected_grip = [getattr(active, s).gripper_open for s in ("left", "right")]
                     np.testing.assert_allclose(observed.gripper_position, expected_grip, atol=.01)
                 phase_index += 1
@@ -94,9 +97,11 @@ def execute():
             assert observation.mode != "fault", observation.reason
             velocity = robot.controller.velocity.copy()
             peak_speed = max(peak_speed, float(np.max(abs(velocity))))
+            assert np.all(abs(velocity) <= MAX_VELOCITY + 1e-8)
             # HOLD explicitly cancels the motion reference; continuity limits
             # apply to tracking steps, not the emergency trajectory override.
             if active is not None and tick != PHASES[phase_index][0]:
+                assert np.all(abs(velocity - previous_velocity) / .01 <= MAX_ACCELERATION + 1e-7)
                 peak_acceleration = max(peak_acceleration, float(np.max(abs(velocity - previous_velocity))) / .01)
             previous_velocity = velocity
             if tick in (2319, 3199):
@@ -107,13 +112,12 @@ def execute():
                 assert drift < .01 and speed < .001, checks[-1]
             if tick % 4 == 0:
                 frames.append((tick / 100, phase_index, observation, display_target))
-        assert peak_speed <= .6 + 1e-8
-        assert peak_acceleration <= 2 + 1e-7
     report = dict(duration_s=32, fps=FPS, frames=len(frames),
-                  source="Scripted RobotInterface targets; actuated MuJoCo simulation; no mouse capture",
+                  source="Official AgileX ArmIK with configs/ik.yaml tuning; scripted RobotInterface targets; actuated MuJoCo simulation; no mouse capture",
+                  parameters=solver_parameters(),
                   max_requested_speed_rad_s=peak_speed,
                   max_requested_acceleration_rad_s2=peak_acceleration, checks=checks,
-                  limitations="Contacts disabled; nominal CAD TCP; no hardware validation")
+                  limitations="Contacts disabled; official nominal TCP; soft objective retains pose residuals; no hardware validation")
     return frames, report
 
 

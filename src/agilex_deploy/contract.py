@@ -1,4 +1,4 @@
-"""Version 2 robot contract. Distances are meters, rotations are XYZW quaternions.
+"""Version 3 robot contract: official NERO TCP, meters and XYZW quaternions.
 
 All poses use the fixed stand's base_link frame. There is no simulator state,
 ground-truth object state, backend selector, or vendor SDK type in this API.
@@ -86,7 +86,7 @@ class Observation:
     mode: str
     reason: str
     cameras: tuple = ()  # Empty means unavailable; no synthetic RGB-D is returned.
-    schema_version: int = 2
+    schema_version: int = 3
 
     def to_dict(self):
         return asdict(self)

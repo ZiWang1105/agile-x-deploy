@@ -1,0 +1,26 @@
+{
+  "stand_driver_-22.5_interference_mm3": 0.0,
+  "stand_driver_22.5_interference_mm3": 0.0,
+  "camera_driver_-18_interference_mm3": 0.0,
+  "camera_driver_18_interference_mm3": 0.0,
+  "camera_body_interference_mm3": 0.0,
+  "stand_plate_interference_mm3": 0.0,
+  "cad_valid": true,
+  "solid_count": 1,
+  "stl_watertight": true,
+  "stl_winding_consistent": true,
+  "stl_extents_mm": [
+    26.000000000000004,
+    46.0,
+    64.0
+  ],
+  "volume_cm3": 27.458132651350805,
+  "assumptions": [
+    "Stand holes centred vertically on 20 mm plate.",
+    "Stand metal plate preview thickness 2 mm; not measured."
+  ],
+  "limitations": [
+    "No physical fit, load, thermal or vibration test.",
+    "Full tilt sweep and cable clearance require physical check."
+  ]
+}

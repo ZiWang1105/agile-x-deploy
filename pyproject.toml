@@ -7,10 +7,13 @@ name = "agilex-deploy"
 version = "0.1.0"
 description = "Dual NERO interactive IK and backend-independent robot interface"
 requires-python = ">=3.10"
-dependencies = ["mujoco==3.10.0", "numpy==2.2.6", "scipy==1.15.3"]
+dependencies = ["mujoco==3.10.0", "numpy==2.2.6", "scipy==1.15.3", "PyYAML==6.0.3"]
 
 [project.scripts]
 agilex-interactive = "agilex_deploy.interactive:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+agilex_deploy = ["calibration_ui.html"]

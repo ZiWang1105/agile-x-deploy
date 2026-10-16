@@ -1,4 +1,6 @@
 .venv/
+.venv-official/
+.tools/
 __pycache__/
 dist/
 *.egg-info/
@@ -8,3 +10,5 @@ build/
 reference/
 previews/decoded_*.png
 previews/video_check_*.png
+
+.venv-camera/

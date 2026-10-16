@@ -1,0 +1,13 @@
+{
+  "width": 64.0,
+  "stand_height": 20.0,
+  "stand_pitch": 45.0,
+  "wall": 6.0,
+  "shelf_depth": 46.0,
+  "shelf_top": 16.0,
+  "camera_pitch": 36.0,
+  "camera_y": 25.0,
+  "hole_diameter": 3.4,
+  "slot_length": 5.4,
+  "gusset_width": 4.0
+}

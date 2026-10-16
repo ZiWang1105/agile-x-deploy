@@ -1,0 +1,10 @@
+# Local tuning of the original AgileX ArmIK solver. All other values come
+# from the pinned, unmodified official NERO YAML in third_party/questarmteleop.
+# This is not the old differential IK's parameter set: its gains and damping
+# do not have equivalent meanings in the official optimization problem.
+overrides:
+  # Prioritize TCP tracking while retaining the official regularization,
+  # smoothing, solver settings, geometry and joint bounds. These weights
+  # multiply residuals before squaring in the original AgileX objective.
+  w_pos: 40.0
+  w_ori: 4.0

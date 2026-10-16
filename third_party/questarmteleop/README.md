@@ -1,0 +1,5 @@
+# AgileX official IK source snapshot
+
+`arm_ik_pose_node.py`, `arm_ik_pose_node.nero.yaml` and `package.xml` are unmodified files from the pinned QuestArmTeleop commit in `manifest.json`. The package declares Apache-2 licensing; upstream has no root LICENSE file in that snapshot. Original comments and package metadata are preserved. The NERO URDF and referenced mesh assets come from the separately pinned agx_arm_urdf snapshot under its included MIT license (`URDF_LICENSE`). Identical existing assets are referenced by path and hash instead of duplicated.
+
+The runtime loads the original `ArmIK` class and its `xyzrpy_to_mat` helper from their AST definitions. It does not import or start the ROS node, publishers, launch files or automatic hardware enable. No solver equations or methods are rewritten. The original YAML supplies defaults, with an explicit local `w_pos=40, w_ori=4` override in `configs/ik.yaml`; the vendored YAML itself stays unchanged. Repository-specific mounting-frame conversion and rate-limited joint execution live outside this snapshot.

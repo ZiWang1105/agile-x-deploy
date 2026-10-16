@@ -13,7 +13,8 @@ import numpy as np
 
 from .backends import RealBackend, SimBackend
 from .contract import SIDES
-from .model import CONTROL_DT, ROOT
+from .model import CONTROL_DT, ROOT, Kinematics, initial_positions
+from .official_ik import OfficialDualIK
 from .nero_transport import NeroTransport, MotionGuard, validate_workspace_radius
 from .runtime import Robot
 
@@ -67,10 +68,13 @@ def control_worker(connection, side, mapping, commissioning, simulation, workspa
     interlock = None
     next_tick = time.monotonic()
     try:
+        # Warm up before opening CAN, so solver construction cannot accumulate
+        # a feedback backlog. The nominal warm-up pose is never sent to motors.
+        ik = OfficialDualIK(Kinematics(), initial_positions())
         factory = SimulatedCommissioningTransport if simulation else NeroTransport
         transport = factory(side=side, mapping=mapping, commissioning=commissioning,
                             workspace_radius_m=workspace_radius_m)
-        robot = Robot(RealBackend(transport))
+        robot = Robot(RealBackend(transport), ik=ik)
         connection.send((0, True, "ready"))
         while True:
             now = time.monotonic()
@@ -129,8 +133,7 @@ def control_worker(connection, side, mapping, commissioning, simulation, workspa
                     robot.kinematics.limits[selected] = limits.position
                     robot.hold()
                     # Physical arming and HOLD may take time; rebase every
-                    # reference/home from the fresh sample, never from preview.
-                    robot.controller.home = np.array(robot.last_sample.positions)
+                    # reference from the fresh sample, never from preview.
                     heartbeat = time.monotonic()
                     next_tick = heartbeat + CONTROL_DT
                     result = transport.guard.lift_target()

@@ -1,0 +1,110 @@
+{
+  "status": "not_validated_not_applied",
+  "captures": 9,
+  "correspondences": 37,
+  "landmarks": 5,
+  "annotation_method": "Assistant visual selection; not automatic or subpixel localization",
+  "all_rms_px": 8.645349188510922,
+  "inlier_rms_px": 3.2170093692895803,
+  "inliers": 24,
+  "excluded_by_ransac": 13,
+  "max_heldout_pose_rms_px": 15.046559519924203,
+  "corner_only_all_rms_px": 6.4275145666864715,
+  "independent_screw_errors_corner_only_fit_px": [
+    12.768075,
+    12.188196,
+    14.387048,
+    11.52249,
+    11.938702
+  ],
+  "background_rigidity_check": [
+    {
+      "pose": 1,
+      "tracked_points": 125,
+      "median_displacement_px": [
+        0.0,
+        0.0
+      ],
+      "p90_displacement_px": 0.0
+    },
+    {
+      "pose": 2,
+      "tracked_points": 125,
+      "median_displacement_px": [
+        0.00897216796875,
+        0.029445648193359375
+      ],
+      "p90_displacement_px": 0.34715771675109863
+    },
+    {
+      "pose": 3,
+      "tracked_points": 119,
+      "median_displacement_px": [
+        -0.03509521484375,
+        0.01007843017578125
+      ],
+      "p90_displacement_px": 0.3651544451713562
+    },
+    {
+      "pose": 4,
+      "tracked_points": 115,
+      "median_displacement_px": [
+        -0.0169677734375,
+        0.0069732666015625
+      ],
+      "p90_displacement_px": 0.3576817214488983
+    },
+    {
+      "pose": 5,
+      "tracked_points": 113,
+      "median_displacement_px": [
+        -0.00079345703125,
+        -0.0238037109375
+      ],
+      "p90_displacement_px": 0.3404153287410736
+    },
+    {
+      "pose": 6,
+      "tracked_points": 112,
+      "median_displacement_px": [
+        -0.00384521484375,
+        -0.02330780029296875
+      ],
+      "p90_displacement_px": 0.3387718200683594
+    },
+    {
+      "pose": 7,
+      "tracked_points": 125,
+      "median_displacement_px": [
+        0.029541015625,
+        0.0367584228515625
+      ],
+      "p90_displacement_px": 0.4217210114002228
+    },
+    {
+      "pose": 8,
+      "tracked_points": 118,
+      "median_displacement_px": [
+        0.008514404296875,
+        -0.058475494384765625
+      ],
+      "p90_displacement_px": 0.33103111386299133
+    },
+    {
+      "pose": 9,
+      "tracked_points": 115,
+      "median_displacement_px": [
+        -0.0069580078125,
+        -0.0266571044921875
+      ],
+      "p90_displacement_px": 0.36840054392814636
+    }
+  ],
+  "camera_intrinsics_modified_during_fit": false,
+  "kinematics_modified_during_fit": false,
+  "original_capture_dataset_modified": false,
+  "active_configuration_changed": false,
+  "physical_commands_sent_during_analysis": 0,
+  "timing_qualified": false,
+  "interpretation": "Image/geometry consistency is inadequate for a trusted calibration. Low inlier residual omits 13/37 matches. Large background motion is not observed. Root cause among correspondence, CAD/assembly geometry, kinematics, and capture latency is unresolved."
+}

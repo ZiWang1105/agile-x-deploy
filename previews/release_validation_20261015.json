@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-15",
+  "command": "OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MUJOCO_GL=egl .venv-official/bin/python -m unittest discover -s tests -v",
+  "tests_passed": 79,
+  "elapsed_seconds": 112.359,
+  "physical_motion_performed": false,
+  "archive_files_verified": 144,
+  "archived_candidate_reproduced_exactly": true,
+  "calibration_status": "candidate_not_applied",
+  "all_rms_px": 4.521045286926541,
+  "worst_leave_one_pose_out_rms_px": 7.010417209150628
+}

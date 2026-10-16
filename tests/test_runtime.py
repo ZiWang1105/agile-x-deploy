@@ -66,7 +66,8 @@ class RuntimeTests(unittest.TestCase):
 
     def test_both_arms_track_translation_rotation_and_limits(self):
         with Robot(SimBackend()) as r:
-            a = target(r.observe())
+            initial = r.observe()
+            a = target(initial)
             previous_velocity = np.zeros(14)
             for i in range(700):
                 if i % 10 == 0:
@@ -81,6 +82,12 @@ class RuntimeTests(unittest.TestCase):
             o = r.observe()
             for side in ("left", "right"):
                 e = pose_error(getattr(o, f"{side}_tcp"), getattr(a, side).pose)
+                # Official NERO weights trade pose accuracy for regularization.
+                # Require substantial progress, not the old solver's exact-pose claim.
+                initial_error = pose_error(getattr(initial, f"{side}_tcp"), getattr(a, side).pose)
+                self.assertLess(np.linalg.norm(e[:3]), .5 * np.linalg.norm(initial_error[:3]))
+                # Local pose weights reduce the upstream tracking bias. Verify
+                # submillimeter tracking through the actuator simulation too.
                 self.assertLess(np.linalg.norm(e[:3]), .001)
                 self.assertLess(np.linalg.norm(e[3:]), .01)
             np.testing.assert_allclose(o.gripper_position, [1, 1], atol=.001)
@@ -97,6 +104,9 @@ class RuntimeTests(unittest.TestCase):
     def test_real_adapter_and_sim_share_observation_and_controller(self):
         transport = LoopbackTransport()
         with Robot(SimBackend()) as sim, Robot(RealBackend(transport)) as real:
+            # Constructing the second official solver can outlive a feedback lease.
+            sim.tick()
+            real.tick()
             a = target(sim.observe())
             for i in range(300):
                 for r in (sim, real):

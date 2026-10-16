@@ -1,0 +1,307 @@
+{
+  "T_camera_from_base": [
+    [
+      0.016199510696813833,
+      -0.9946730375161377,
+      0.10179943168605614,
+      0.04762257571490683
+    ],
+    [
+      -0.9981743765902558,
+      -0.02201277256593145,
+      -0.05624368197953175,
+      0.19347248718121016
+    ],
+    [
+      0.05818496173271874,
+      -0.1007024641326158,
+      -0.993213735278455,
+      0.608315793875387
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "T_base_from_camera": [
+    [
+      0.016199510696813836,
+      -0.9981743765902559,
+      0.05818496173271875,
+      0.15695298566671945
+    ],
+    [
+      -0.9946730375161378,
+      -0.022012772565931454,
+      -0.10070246413261583,
+      0.11288665731281357
+    ],
+    [
+      0.10179943168605617,
+      -0.05624368197953178,
+      -0.9932137352784554,
+      0.6102212557614574
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "errors_px": [
+    2.071040596537816,
+    1.1177440385868456,
+    4.62240513560083,
+    4.6407482500479365,
+    5.3691858058548325,
+    6.185941222426048,
+    1.9951378368523205,
+    1.0353909776768437,
+    6.3700429197319846,
+    5.147199775154122,
+    11.779260976398024,
+    11.321063110089204,
+    2.1261315221479764,
+    3.821178721136784,
+    3.3245258278104015,
+    4.0878147496547,
+    4.118787149189302,
+    3.9611508053741904,
+    0.22037933206892935,
+    1.34697961645126,
+    4.678285021894673,
+    3.549669941182965,
+    2.9969333510873897,
+    2.280775710493175,
+    12.020226364797734,
+    10.570917406677607,
+    14.136362654761157,
+    15.0017063174868,
+    3.4513829022130085,
+    3.812288727923671,
+    3.5779327672841417,
+    4.123025433703558
+  ],
+  "inliers": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    false,
+    true,
+    true,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true
+  ],
+  "all_rms_px": 6.4275145666864715,
+  "inlier_rms_px": 3.50675145990355,
+  "max_px": 15.0017063174868,
+  "point_spread_singular_values_m": [
+    0.4991380422245429,
+    0.2623826239880663,
+    0.11323187308995307
+  ],
+  "jacobian_singular_values": [
+    4288.363024824944,
+    3703.988449437623,
+    702.5909150562833,
+    247.55096250028825,
+    120.4135126302841,
+    76.02111112640992
+  ],
+  "refinement": "RANSAC inliers; soft_l1 loss, 3 px scale",
+  "threshold_px": 6.0,
+  "per_pose": [
+    {
+      "pose_id": "pose_093c32fd3945",
+      "count": 2,
+      "rms_px": 3.6363160810593853
+    },
+    {
+      "pose_id": "pose_8dd0f580d501",
+      "count": 4,
+      "rms_px": 2.9376029522546894
+    },
+    {
+      "pose_id": "pose_950c7c6f38ef",
+      "count": 4,
+      "rms_px": 3.423614445130058
+    },
+    {
+      "pose_id": "pose_b8a506bb2fc1",
+      "count": 4,
+      "rms_px": 4.246958749793706
+    },
+    {
+      "pose_id": "pose_b9843d8a3e0b",
+      "count": 4,
+      "rms_px": 3.480004829244352
+    },
+    {
+      "pose_id": "pose_bfc8dac735a8",
+      "count": 4,
+      "rms_px": 13.049119493502499
+    },
+    {
+      "pose_id": "pose_d13f3d6e24a7",
+      "count": 2,
+      "rms_px": 3.860112797197251
+    },
+    {
+      "pose_id": "pose_d95c574fc7f3",
+      "count": 4,
+      "rms_px": 3.488196338720681
+    },
+    {
+      "pose_id": "pose_dc499466cb52",
+      "count": 4,
+      "rms_px": 9.137677103855365
+    }
+  ],
+  "leave_one_pose_out": [
+    {
+      "pose_id": "pose_093c32fd3945",
+      "rms_px": 4.981545930986158,
+      "max_px": 5.230504579457684,
+      "positive_depth": true
+    },
+    {
+      "pose_id": "pose_8dd0f580d501",
+      "rms_px": 2.728188003621319,
+      "max_px": 4.003236642849916,
+      "positive_depth": true
+    },
+    {
+      "pose_id": "pose_950c7c6f38ef",
+      "rms_px": 3.804309636456351,
+      "max_px": 4.4704090322800525,
+      "positive_depth": true
+    },
+    {
+      "pose_id": "pose_b8a506bb2fc1",
+      "rms_px": 4.985184260605801,
+      "max_px": 7.453779635209961,
+      "positive_depth": true
+    },
+    {
+      "pose_id": "pose_b9843d8a3e0b",
+      "rms_px": 4.003807131903734,
+      "max_px": 5.219708515810027,
+      "positive_depth": true
+    },
+    {
+      "pose_id": "pose_bfc8dac735a8",
+      "rms_px": 15.046003280748208,
+      "max_px": 16.010221309283455,
+      "positive_depth": true
+    },
+    {
+      "pose_id": "pose_d13f3d6e24a7",
+      "rms_px": 4.639304356169391,
+      "max_px": 4.950239457549741,
+      "positive_depth": true
+    },
+    {
+      "pose_id": "pose_d95c574fc7f3",
+      "rms_px": 3.844760236093135,
+      "max_px": 5.147166970577039,
+      "positive_depth": true
+    },
+    {
+      "pose_id": "pose_dc499466cb52",
+      "rms_px": 11.612856714083392,
+      "max_px": 12.720065428891667,
+      "positive_depth": true
+    }
+  ],
+  "status": "candidate_not_applied",
+  "kind": "physical",
+  "base_frame": "base_link",
+  "camera_frame": "zed_left_optical",
+  "camera": {
+    "view": "left",
+    "image_space": "raw",
+    "distortion_model": "opencv_brown_conrady",
+    "size_wh": [
+      1280,
+      720
+    ],
+    "serial": "35330610",
+    "K": [
+      [
+        531.76946103645,
+        0,
+        624.55641822771
+      ],
+      [
+        0,
+        531.79335593811,
+        358.3583995224
+      ],
+      [
+        0,
+        0,
+        1
+      ]
+    ],
+    "distortion": [
+      0.11643057530497285,
+      0.449931827093041,
+      1.2528326648178139e-05,
+      9.94122427953024e-05,
+      0.35374565993488194,
+      0.2236527469840053,
+      0.32204985111589796,
+      0.45931965818516896
+    ],
+    "source": {
+      "file": "/home/ziwang/projects/agilex-deploy/logs/calibration/physical/SN35330610.conf",
+      "sha256": "5703d8246648f76b4bb9bdd741ac95ba6ead501f4e799ed188330f47bef53422",
+      "section": "LEFT_CAM_HD",
+      "distortion_section": "LEFT_DISTO"
+    },
+    "serial_verified_against_capture_device": false,
+    "serial_evidence": {
+      "method": "sysfs_usb_hid_serial",
+      "sysfs_path": "/sys/bus/usb/devices/1-5.2.3.2",
+      "vid": "2b03",
+      "pid": "f881",
+      "serial": "35330610",
+      "video_usb_serial": "OV0001",
+      "association": "one ZED 2i video device and one ZED 2i HID device connected",
+      "observed_at": "2026-10-15T22:20:38.923119+00:00"
+    }
+  },
+  "units": "meters",
+  "dataset_sha256": "4e6b9bef0dada488b30386b4f3f93372e1b38f8de524c7d3a8a3192fb0106a69",
+  "model_sha256": "062bec13aada5f871b213b99482cf37fe09b0f86a7dd67ccc7e4ab7c920556ae",
+  "timing_qualified": false,
+  "active_configuration_changed": false,
+  "notes": "Manual feature identity and kinematic accuracy require review. Reprojection error is not independent metric accuracy."
+}

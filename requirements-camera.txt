@@ -1,0 +1,3 @@
+# Isolated dependencies for the UVC color stream; no ZED SDK is required.
+numpy==2.2.6
+opencv-python-headless==5.0.0.93

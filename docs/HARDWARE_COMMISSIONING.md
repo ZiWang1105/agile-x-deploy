@@ -1,5 +1,9 @@
 # Dual NERO commissioning
 
+## Current solver revision
+
+The active IK is now the official AgileX solver with NERO YAML defaults and the explicit local `w_pos=40, w_ori=4` override in `configs/ik.yaml`. TCPs and observations use schema version 3. The hardware observations, motion sessions and CAN fault below are historical evidence from before this solver migration; no physical motion has been performed with the new solver. See [official IK provenance and tests](OFFICIAL_IK.md). Use `.venv-official` through `scripts/run_interactive.sh`; the old environment has no fallback solver.
+
 ## Current state
 
 The fixed stand's robot-left arm maps to USB serial `0030002D4648570A20303731` (observed as `can1`); robot-right maps to `0040002C4648570220393831` (observed as `can0`). Robot left is the observer's right when facing the front. The user confirmed the mapping by moving only robot left while both channels were monitored. The user also confirmed mounting and support.
@@ -30,7 +34,7 @@ Each explicit E arming request selects CAN J mode at 100% of configured firmware
 
 Simulation uses the left readback as an explicit offline fixture for both arms. It is not a claim about the unqueried right controller. Real arming never falls back to that fixture. No numeric torque ceiling was found in the reviewed manual/API. The SDK's MIT `t_ff` encoding range and URDF effort values do not establish a joint torque safety limit. Joint-position mode keeps drive torque/current protection under firmware control without modifying it. The simulation retains its existing, unqualified actuator force model; no verified sim/real torque equivalence is claimed.
 
-Fresh feedback, firmware fault checks, single-arm ownership, command/heartbeat expiry and operator HOLD remain. IK damping, feedback gain and the unreachable/stalled-target diagnostic are numerical control behavior, not additional vendor motion limits. No collision avoidance is implemented. Changes take effect in a newly started process; running controllers are not modified automatically.
+Fresh feedback, firmware fault checks, single-arm ownership, command/heartbeat expiry and operator HOLD remain. The official IK objective and the unreachable/stalled-target diagnostic are numerical control behavior, not additional vendor motion limits. No collision avoidance is implemented. Changes take effect in a newly started process; running controllers are not modified automatically.
 
 ## CAN queue-fault recovery
 
@@ -45,7 +49,7 @@ The control owner now exits on a close request even if HOLD fails, closes its tr
 From the repository root:
 
 ```bash
-DISPLAY=:1 .venv/bin/agilex-interactive --backend real-preview
+DISPLAY=:1 ./scripts/run_interactive.sh --backend real-preview
 ```
 
 The blue geometry is reconstructed from measured joint angles. Amber geometry is a separate simulated plant controlled by the shared IK/runtime interface. Both use the same supplied URDF mounting transforms. Press M to hide the amber geometry and compare shoulder, elbow, wrist, and flange orientations with the physical robot. Red target handles move only the simulation. The fixed stand and camera geometry are nominal CAD, not sensed geometry.
@@ -54,7 +58,7 @@ The preview is seeded once from the real joint angles at startup. It does not co
 
 Physical finger travel is not calibrated, so both sets of finger meshes are hidden and gripper keys are disabled. The simulator still owns its internal gripper state; this is not a hardware measurement. Physical velocities are unavailable in this partial feedback interface.
 
-The separate commissioning transport requires firmware 1.21, receives actual high-speed velocity frames `0x251`–`0x257` and arm status `0x2A1`, and includes velocity acquisition times in its paired-sample age/skew checks. Gripper travel remains unavailable (`null`) in the shared version 2 contract, and only `gripper_open: null` is accepted by the physical session.
+The separate commissioning transport requires firmware 1.21, receives actual high-speed velocity frames `0x251`–`0x257` and arm status `0x2A1`, and includes velocity acquisition times in its paired-sample age/skew checks. Gripper travel remains unavailable (`null`) in the shared version 3 contract, and only `gripper_open: null` is accepted by the physical session.
 
 The receiver decodes the standard NERO joint feedback IDs `0x2A5`, `0x2A6`, `0x2A7`, and `0x2A9`, with signed big-endian angles in 0.001 degrees, plus driver status IDs `0x261`–`0x267`. It uses Linux kernel receive timestamps, publishes a new pair only after all eight joint frames advance, enforces 200 ms age and 30 ms intra/inter-arm skew, and rejects socket overflow or clock discontinuity. CAN frames do not expose a shared hardware sampling clock; these checks bound host reception timing rather than claiming atomic simultaneous sampling.
 
@@ -80,7 +84,7 @@ Do not use `calibrate_joint()` to record a preparation pose: that API changes en
 This is a limited commissioning procedure, not collision-qualified general teleoperation. Keep mechanical support in place, clear the selected arm's workspace, and stop other arm-control applications. Model limits are enforced but firmware-limit readback remains unavailable; do not interpret this first test as full-range qualification.
 
 ```bash
-DISPLAY=:1 .venv/bin/agilex-interactive --backend real-commissioning --side left
+DISPLAY=:1 ./scripts/run_interactive.sh --backend real-commissioning --side left
 ```
 
 The program starts unarmed and refuses an already-enabled arm system. Robot left is the observer's right when facing the stand. Before arming it rechecks the actual firmware, USB mapping, paired feedback, stationary joints, healthy driver flags, and model-limit margin.
@@ -101,7 +105,7 @@ Closing the viewer leaves motors enabled. To disable them, first mechanically su
 
 ```bash
 cd ~/projects/agilex-deploy
-.venv/bin/python -m agilex_deploy.hardware_power --arms-supported
+.venv-official/bin/python -m agilex_deploy.hardware_power --arms-supported
 ```
 
 The flag explicitly confirms physical support; the software cannot inspect it. The command takes the same controller ownership lock, resolves the adapters by their recorded USB serials, and sends only individual NERO joint-disable requests (`0x471`, indices 1–7, flag 1). It does not enable motors, switch modes, command positions, or address grippers. It reports success only after feedback confirms no enabled arm joints; otherwise keep support in place and inspect the reported failure. The ownership lock does not cover unrelated vendor applications, which must also be closed.
@@ -113,7 +117,7 @@ After `DISABLED confirmed: left 0/7 enabled; right 0/7 enabled.`, you can start 
 Full workspace is the default; the explicit equivalent is:
 
 ```bash
-DISPLAY=:1 .venv/bin/agilex-interactive --backend real-commissioning --side left --workspace full
+DISPLAY=:1 ./scripts/run_interactive.sh --backend real-commissioning --side left --workspace full
 ```
 
 Use `commissioning-sim` instead of `real-commissioning` to practice without CAN access. Full mode starts unarmed and still controls only the selected arm. It removes all arming-relative Cartesian radius, minimum height, orientation and joint excursion limits. Ctrl+right-drag translates; Ctrl+left-drag rotates. The starting pose is retained only for the fixed G test target and display offsets. The source joint position bounds, selected-controller speed/acceleration limits, feedback freshness and heartbeat/command watchdogs apply. The common contract also rejects coordinates outside its existing 2 m envelope, which exceeds the modeled arm's reach.
@@ -123,7 +127,7 @@ Full mode has no collision avoidance: moving downward or sideways can contact th
 The optional bounded workspace has a 3 cm radius. It can be explicitly configured between 3 and 20 cm with `--workspace bounded --workspace-radius-cm`; the same value is enforced by the viewer and the control process in both commissioning backends. For example, to practice a 10 cm workspace without CAN access:
 
 ```bash
-DISPLAY=:1 .venv/bin/agilex-interactive --backend commissioning-sim --side left --workspace bounded --workspace-radius-cm 10
+DISPLAY=:1 ./scripts/run_interactive.sh --backend commissioning-sim --side left --workspace bounded --workspace-radius-cm 10
 ```
 
 For a supervised physical session, use `real-commissioning` with the same option after clearing the arm's movement area and starting with supported, disabled arms. The larger radius does not enable motors automatically or change speed, acceleration, model joint limits, the 0.45 rad joint excursion bound, the height floor, or communication watchdog checks. G still requests only the fixed 3 cm lift. The radius is a target allowance, not a guarantee that every point is reachable. Offline tests from the recorded October 14 posture reached 10 cm in each horizontal direction for the left arm; an upward request encountered the joint excursion guard near 6.7 cm. These results do not establish physical clearance or stopping performance.
@@ -138,18 +142,18 @@ Commissioning sessions automatically write timestamped JSONL logs under `logs/co
 
 Terminal Ctrl+C is handled by the viewer. The owned control process ignores the terminal's duplicate SIGINT so that the viewer can request HOLD and join it over IPC. This fixes the observed simultaneous interruption and broken-pipe shutdown error. Q, window close, and Ctrl+C leave motors enabled; none replaces a physical emergency stop or guarantees stopping after host/CAN failure.
 
-To practice this exact interface without any CAN access, use `--backend commissioning-sim --side left`. To verify real observations and process cleanup without arming, run `.venv/bin/python scripts/check_real_session.py`.
+To practice this exact interface without any CAN access, use `--backend commissioning-sim --side left`. To verify real observations and process cleanup without arming, run `.venv-official/bin/python scripts/check_real_session.py`.
 
 ## Repeatable checks
 
 ```bash
-.venv/bin/python -m unittest discover -s tests -v
-.venv/bin/python -m agilex_deploy.can_feedback --output logs/commissioning/live_snapshot.json
+.venv-official/bin/python -m unittest discover -s tests -v
+.venv-official/bin/python -m agilex_deploy.can_feedback --output logs/commissioning/live_snapshot.json
 # These two commands transmit only fixed read requests, unlike the passive viewer.
-.venv/bin/python -m agilex_deploy.firmware_probe --output logs/commissioning/firmware.json
-.venv/bin/python -m agilex_deploy.limits_probe --output logs/commissioning/firmware_limits.json
-MUJOCO_GL=egl .venv/bin/python scripts/validate_live_preview.py
-DISPLAY=:1 .venv/bin/agilex-interactive --backend real-preview --duration 5
+.venv-official/bin/python -m agilex_deploy.firmware_probe --output logs/commissioning/firmware.json
+.venv-official/bin/python -m agilex_deploy.limits_probe --output logs/commissioning/firmware_limits.json
+MUJOCO_GL=egl .venv-official/bin/python scripts/validate_live_preview.py
+DISPLAY=:1 ./scripts/run_interactive.sh --backend real-preview --duration 5
 ```
 
 `validate_live_preview.py` reads live joints, seeds the simulator, commands a 20 mm upward target to the simulated arms through `RobotInterface`, records convergence and CAN net-device TX deltas, and writes `logs/commissioning/live_preview.png` and `live_preview_report.json`. This is a scripted simulation validation with physical input, not a mouse interaction or physical tracking test. Logs are intentionally ignored by Git.

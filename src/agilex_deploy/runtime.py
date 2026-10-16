@@ -19,7 +19,7 @@ TARGET_LEASE_S = .5
 
 
 class Robot:
-    def __init__(self, backend: Backend):
+    def __init__(self, backend: Backend, *, ik=None):
         self.backend = backend
         self.kinematics = Kinematics()
         self.lock = threading.RLock()
@@ -39,7 +39,11 @@ class Robot:
         self.last_sequence = -1
         self.errors = {}
         sample = self._read()
-        self.controller = Controller(self.kinematics, sample.positions, sample.grippers)
+        self.controller = Controller(self.kinematics, sample.positions, sample.grippers, ik=ik)
+        # Official solver construction/warm-up can exceed the feedback lease.
+        # Acquire fresh encoders before exposing the initial observation.
+        sample = self._read()
+        self.controller.hold(sample.positions, sample.grippers)
         self._observe(sample)
 
     def _read(self):

@@ -135,7 +135,9 @@ class CommissioningDragTests(unittest.TestCase):
         perturb = mujoco.MjvPerturb()
         perturb.select = target.id
         perturb.active = mujoco.mjtPertBit.mjPERT_TRANSLATE
-        perturb.refpos[:] = lift.left.pose.position_m
+        # MuJoCo perturbation refpos is the selected body's inertial center,
+        # not its mocap origin; the official TCP orientation exposes that offset.
+        perturb.refpos[:] = kin.data.xipos[target.id]
         perturb.refpos[0] += .005
         perturb.refquat[:] = np.array(lift.left.pose.quaternion_xyzw)[[3, 0, 1, 2]]
         # This is the same native operation used by passive viewer.sync().

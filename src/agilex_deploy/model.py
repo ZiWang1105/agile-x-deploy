@@ -8,11 +8,14 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 
 from .contract import JOINT_NAMES, SIDES, Pose
+from .official_config import official_parameters
 
 ROOT = Path(__file__).resolve().parents[2]
 MODEL_PATH = ROOT / "build/dual_nero.sim.xml"
 CONTROL_DT = .01
-TCP_OFFSET_M = (0, 0, .1358)  # Nominal CAD finger-root plane, not calibrated pinch point.
+TCP_OFFSET_M = tuple(official_parameters()["tool_translation_xyz"])
+TCP_RPY = tuple(official_parameters()["tool_pre_rot_rpy"])
+TCP_PARENT = official_parameters()["ee_parent_joint"].replace("joint", "link")
 
 
 def build_sim_model():
@@ -37,8 +40,9 @@ def build_sim_model():
         ET.SubElement(actuator, "position", name=name, joint=name, kp="350", kv="35",
                       ctrlrange=joint.get("range"), forcerange="-100 100")
     for side in SIDES:
-        body = root.find(f".//body[@name='{side}_gripper_base']")
+        body = root.find(f".//body[@name='{side}_{TCP_PARENT}']")
         ET.SubElement(body, "site", name=f"{side}_tcp", pos=" ".join(map(str, TCP_OFFSET_M)),
+                      quat=" ".join(map(str, Rotation.from_euler("xyz", TCP_RPY).as_quat()[[3, 0, 1, 2]])),
                       type="sphere", size="0.008", rgba="0.2 1 0.3 1", group="5")
         ET.SubElement(equality, "joint", joint1=f"{side}_gripper_joint2",
                       joint2=f"{side}_gripper_joint1", polycoef="0 -1 0 0 0",
@@ -51,7 +55,15 @@ def build_sim_model():
 
 
 def load_model():
-    if not MODEL_PATH.exists():
+    rebuild = not MODEL_PATH.exists()
+    if not rebuild:
+        xml = ET.parse(MODEL_PATH)
+        for side in SIDES:
+            site = xml.find(f".//body[@name='{side}_{TCP_PARENT}']/site[@name='{side}_tcp']")
+            if site is None or not np.allclose(np.fromstring(site.get("pos", ""), sep=" "), TCP_OFFSET_M):
+                rebuild = True
+                break
+    if rebuild:
         build_sim_model()
     return mujoco.MjModel.from_xml_path(str(MODEL_PATH))
 

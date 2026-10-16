@@ -1,0 +1,111 @@
+{
+  "questarmteleop_repository": "https://github.com/agilexrobotics/QuestArmTeleop",
+  "questarmteleop_commit": "145b80360cf2c5f2e63179086d0aab2cb563826c",
+  "urdf_repository": "https://github.com/agilexrobotics/agx_arm_urdf",
+  "urdf_commit": "ee534cea40b915cd70bd93d240ebf62110ae78d3",
+  "files": {
+    "arm_ik_pose_node.py": "62c72b6428c6855c7018945eaa6663522161ac37b21c41a2fe343cbaa9e53d5a",
+    "arm_ik_pose_node.nero.yaml": "4d22f9f3656114f24cd7d70b93f41b94d39d4e0676f59247cc8774241e87efdf",
+    "package.xml": "01b66606be49c3a035a3edc978f4bd8ab40fc208820e1c306164e681389fa523",
+    "nero_with_gripper_description.urdf": "08e1727dbff68617518f67634bff3fc61c07888d6988cd9a88f5778a0a7dc9c2",
+    "URDF_LICENSE": "247944c63de1573653722ba784f96123da267105b7b48577e0c8826a24b809f6"
+  },
+  "assets": {
+    "package://agx_arm_description/agx_arm_urdf/nero/meshes/dae/base_link.dae": {
+      "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/base_link.dae",
+      "sha256": "a369d27a339834e4f59cd2b16065d62a37cb8e1bdd503e150787149e998f03f6"
+    },
+    "package://agx_arm_description/agx_arm_urdf/nero/meshes/base_link.stl": {
+      "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/base_link.stl",
+      "sha256": "540462fb56e52091daa3cd1ad3acc3c19a43f120b2f11bae5a69b32b08c738b6"
+    },
+    "package://agx_arm_description/agx_arm_urdf/nero/meshes/dae/link1.dae": {
+      "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/link1.dae",
+      "sha256": "8aafc23509ce76d9c6fdcf8ef49931a8def1b5bfd1f974cbe677031334da9404"
+    },
+    "package://agx_arm_description/agx_arm_urdf/nero/meshes/link1.stl": {
+      "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/link1.stl",
+      "sha256": "0e38bf33ce41f04d7e70e471768c00fa144ba4016a878b9a6d8303c319736e09"
+    },
+    "package://agx_arm_description/agx_arm_urdf/nero/meshes/dae/link2.dae": {
+      "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/link2.dae",
+      "sha256": "00b3eb4a91c8efd95f3c161ee5318b66cb3e2fa55dac5c139077cdd67463c2ac"
+    },
+    "package://agx_arm_description/agx_arm_urdf/nero/meshes/link2.stl": {
+      "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/link2.stl",
+      "sha256": "fc9eb85db9fbd351c9f6e119f5fed33c6f0dd3bc3b11698a0f96aaeb2d36c721"
+    },
+    "package://agx_arm_description/agx_arm_urdf/nero/meshes/dae/link3.dae": {
+      "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/link3.dae",
+      "sha256": "cd3f0f08ce02aa36bddc0c89efa7d040b927e589e1816da1fd14417511d2b7bc"
+    },
+    "package://agx_arm_description/agx_arm_urdf/nero/meshes/link3.stl": {
+      "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/link3.stl",
+      "sha256": "44c70f731ad5067d608ebebc9e59f3c231988f992dfac6cb01ee7a6bb4b053f1"
+    },
+    "package://agx_arm_description/agx_arm_urdf/nero/meshes/dae/link4.dae": {
+      "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/link4.dae",
+      "sha256": "ea607e157c173ca81d0982a24f2fdd7e98c695d94e0055b58028ce36b09b8708"
+    },
+    "package://agx_arm_description/agx_arm_urdf/nero/meshes/link4.stl": {
+      "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/link4.stl",
+      "sha256": "47242e9b5d8b06c912261756f24dddb1e7f54ac6e718232a25889115298b966d"
+    },
+    "package://agx_arm_description/agx_arm_urdf/nero/meshes/dae/link5.dae": {
+      "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/link5.dae",
+      "sha256": "7733ac4afd30e38360e7a7e833b0ed6192d6fd20c99062b636a236f06b8bfb97"
+    },
+    "package://agx_arm_description/agx_arm_urdf/nero/meshes/link5.stl": {
+      "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/link5.stl",
+      "sha256": "dc497f5a9bab2d0d314250134d4ec86617abea7205d122db41b765acdb86ae7e"
+    },
+    "package://agx_arm_description/agx_arm_urdf/nero/meshes/dae/link6.dae": {
+      "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/link6.dae",
+      "sha256": "260e1808d888da15e7e4e417a3ab0340f2223a5ed4b37e330278862096ed6f85"
+    },
+    "package://agx_arm_description/agx_arm_urdf/nero/meshes/link6.stl": {
+      "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/link6.stl",
+      "sha256": "66417d30596e33c890f4f141781023bd3ea15709a502e7f59b30f6676f556022"
+    },
+    "package://agx_arm_description/agx_arm_urdf/nero/meshes/dae/link7.dae": {
+      "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/dae/link7.dae",
+      "sha256": "8c2498c59bcf574386cbd7e01fd5d81ff2483e26ae2f0e919deec62a04bce77d"
+    },
+    "package://agx_arm_description/agx_arm_urdf/nero/meshes/link7.stl": {
+      "path": "vendor/agx_arm_sim/agx_arm_description/agx_arm_urdf/nero/meshes/link7.stl",
+      "sha256": "70a2f415358f9e46088673c92bfe78ca5b1072dd73b7ea24464ba3ebb4c3e647"
+    },
+    "package://agx_arm_description/agx_arm_urdf/nero/meshes/dae/flange.dae": {
+      "path": "third_party/questarmteleop/assets/nero/meshes/dae/flange.dae",
+      "sha256": "93b4fd381b2edd42a3ec946567027aa3392c65be2f3f00c5711b86f4070980fa"
+    },
+    "package://agx_arm_description/agx_arm_urdf/nero/meshes/flange.stl": {
+      "path": "third_party/questarmteleop/assets/nero/meshes/flange.stl",
+      "sha256": "1ae6d1c5af001582a3328564839e8eb5f2acec02e7e2b19e65fc3c43f8a9c95a"
+    },
+    "package://agx_arm_description/agx_arm_urdf/agx_gripper/meshes/dae/gripper_base.dae": {
+      "path": "third_party/questarmteleop/assets/agx_gripper/meshes/dae/gripper_base.dae",
+      "sha256": "aaea10ec06709d6a3343dd3378553eee3df40b43ee276df10c5b68ac7f61bae2"
+    },
+    "package://agx_arm_description/agx_arm_urdf/agx_gripper/meshes/gripper_base.stl": {
+      "path": "third_party/questarmteleop/assets/agx_gripper/meshes/gripper_base.stl",
+      "sha256": "0b839dc0bcb7d94e3422c74f6396b54a0441ba4836448ab5586e7f372d1bdbf3"
+    },
+    "package://agx_arm_description/agx_arm_urdf/agx_gripper/meshes/dae/gripper_link1.dae": {
+      "path": "third_party/questarmteleop/assets/agx_gripper/meshes/dae/gripper_link1.dae",
+      "sha256": "b4aaf0e024d09eb0454e70e0c5092638edcf7da7c253d1effdeeaec46f76427b"
+    },
+    "package://agx_arm_description/agx_arm_urdf/agx_gripper/meshes/gripper_link1.stl": {
+      "path": "third_party/questarmteleop/assets/agx_gripper/meshes/gripper_link1.stl",
+      "sha256": "475a7d8db056524d7659fadf5a2c307d62791047b6214d733dfc7846ed1c613d"
+    },
+    "package://agx_arm_description/agx_arm_urdf/agx_gripper/meshes/dae/gripper_link2.dae": {
+      "path": "third_party/questarmteleop/assets/agx_gripper/meshes/dae/gripper_link2.dae",
+      "sha256": "0da1350898b2787b76b84698253aeb1efd2ddb6360b2fa2ae03ecff389883af8"
+    },
+    "package://agx_arm_description/agx_arm_urdf/agx_gripper/meshes/gripper_link2.stl": {
+      "path": "third_party/questarmteleop/assets/agx_gripper/meshes/gripper_link2.stl",
+      "sha256": "3f88d534a85e28a33ef7d2061adacbd1d25214aa9325f9e464aad0f9e4b74606"
+    }
+  }
+}

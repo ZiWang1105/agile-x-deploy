@@ -1,0 +1,9 @@
+# Preserve CAD/document exports as artifacts; do not line-merge or normalize them.
+*.pdf binary
+*.step binary
+*.stl binary
+*.zip binary
+
+# These sources are hash-pinned, byte-for-byte upstream snapshots.
+third_party/questarmteleop/** -whitespace
+calibration/2026-10-15_zed35330610/physical/SN35330610.conf -whitespace

@@ -1,0 +1,54 @@
+{
+  "view": "left",
+  "image_space": "raw",
+  "distortion_model": "opencv_brown_conrady",
+  "size_wh": [
+    1280,
+    720
+  ],
+  "serial": "35330610",
+  "K": [
+    [
+      531.76946103645,
+      0,
+      624.55641822771
+    ],
+    [
+      0,
+      531.79335593811,
+      358.3583995224
+    ],
+    [
+      0,
+      0,
+      1
+    ]
+  ],
+  "distortion": [
+    0.11643057530497285,
+    0.449931827093041,
+    1.2528326648178139e-05,
+    9.94122427953024e-05,
+    0.35374565993488194,
+    0.2236527469840053,
+    0.32204985111589796,
+    0.45931965818516896
+  ],
+  "source": {
+    "file": "/home/ziwang/projects/agilex-deploy/logs/calibration/physical/SN35330610.conf",
+    "sha256": "5703d8246648f76b4bb9bdd741ac95ba6ead501f4e799ed188330f47bef53422",
+    "section": "LEFT_CAM_HD",
+    "distortion_section": "LEFT_DISTO"
+  },
+  "serial_verified_against_capture_device": false,
+  "serial_evidence": {
+    "method": "sysfs_usb_hid_serial",
+    "sysfs_path": "/sys/bus/usb/devices/1-5.2.3.2",
+    "vid": "2b03",
+    "pid": "f881",
+    "serial": "35330610",
+    "video_usb_serial": "OV0001",
+    "association": "one ZED 2i video device and one ZED 2i HID device connected",
+    "observed_at": "2026-10-15T22:20:38.923119+00:00"
+  }
+}

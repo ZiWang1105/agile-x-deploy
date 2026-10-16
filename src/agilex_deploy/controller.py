@@ -1,14 +1,15 @@
-"""Measured-state, damped differential IK with a single bounded integrator.
+"""Official AgileX IK followed by shared joint speed/acceleration execution.
 
-This is a new NumPy/MuJoCo Jacobian solver, not AgileX's CasADi/IPOPT solver.
-Both backends use it unchanged. Limits below bound requested joint motion;
-they do not certify measured dynamics, collision clearance, or hardware safety.
+Simulation and hardware use the same upstream solver and NERO parameters.
+The execution layer limits joint references; it does not certify physical
+stopping, torque, contact dynamics or collision clearance.
 """
 import numpy as np
 from scipy.spatial.transform import Rotation
 
 from .contract import SIDES
 from .model import CONTROL_DT
+from .official_ik import OfficialDualIK
 
 from .motion_limits import SIM_VELOCITY, SIM_ACCELERATION
 
@@ -25,13 +26,14 @@ def pose_error(actual, target):
 
 
 class Controller:
-    def __init__(self, kinematics, q, grippers, max_velocity=MAX_VELOCITY, max_acceleration=MAX_ACCELERATION):
+    def __init__(self, kinematics, q, grippers, max_velocity=MAX_VELOCITY, max_acceleration=MAX_ACCELERATION, *, ik=None):
         self.kinematics = kinematics
         self.reference = np.array(q, dtype=float)
         self.velocity = np.zeros(14)
         self.grippers = list(grippers)
         self.set_motion_limits(max_velocity, max_acceleration)
-        self.home = self.reference.copy()
+        self.ik = ik if ik is not None else OfficialDualIK(kinematics, q)
+        self.hold(q, grippers)
 
     def set_motion_limits(self, velocity, acceleration):
         arrays = [np.broadcast_to(np.asarray(v, dtype=float), (14,)).copy()
@@ -46,6 +48,8 @@ class Controller:
         self.reference[:] = q
         self.velocity[:] = 0
         self.grippers[:] = [None if g is None else float(np.clip(g, 0, 1)) for g in grippers]
+        self.kinematics.update(q, grippers)
+        self.hold_poses = {side: self.kinematics.pose(side) for side in SIDES}
 
     def step(self, sample, action):
         q = np.asarray(sample.positions)
@@ -57,14 +61,20 @@ class Controller:
             error = pose_error(kin.pose(side), getattr(action, side).pose)
             errors[side] = (float(np.linalg.norm(error[:3])), float(np.linalg.norm(error[3:])))
             indices = slice(i * 7, (i + 1) * 7)
-            # Weight angular task rows in meters per radian.
-            weights = np.array([1, 1, 1, .4, .4, .4])
-            jac = weights[:, None] * kin.jacobian(side)[:, indices]
-            inverse = jac.T @ np.linalg.solve(jac @ jac.T + .025**2 * np.eye(6), np.eye(6))
-            twist = 4 * weights * error
-            desired[indices] = inverse @ twist
-            # Soft posture preference only in the local null space.
-            desired[indices] += (np.eye(7) - inverse @ jac) @ (.08 * (self.home[indices] - q[indices]))
+            target = getattr(action, side).pose
+            # An unchanged HOLD target must not move an inactive arm merely
+            # because the official objective includes neutral-pose regularization.
+            if target == self.hold_poses[side]:
+                continue
+            goal = self.ik.solve(side, target, q[indices])
+            delta = goal - self.reference[indices]
+            # Decelerate toward the official joint solution. This is execution
+            # timing, not an extra pose objective or a replacement IK solver.
+            acceleration = self.max_acceleration[indices]
+            step = acceleration * CONTROL_DT
+            desired[indices] = np.sign(delta) * np.minimum(
+                abs(delta) / CONTROL_DT,
+                np.sqrt(step**2 + 2 * acceleration * abs(delta)) - step)
         # Scale each arm's joint vector together. Independent speed clipping
         # distorts the Cartesian direction, especially at commissioning speeds.
         for i in range(len(SIDES)):
