@@ -41,6 +41,7 @@ class JointSnapshot:
     grippers: None = None
     arm_status: tuple[bytes, bytes] | None = None
     status_timestamp_s: float | None = None
+    gripper_feedback: tuple | None = None
 
     def validate(self, now):
         if not -.01 <= now - self.timestamp_s <= MAX_AGE_S:
@@ -51,6 +52,9 @@ class JointSnapshot:
             raise RuntimeError("Paired hardware joint feedback exceeds 30 ms skew")
         if self.status_timestamp_s is not None and not -.01 <= now - self.status_timestamp_s <= MAX_AGE_S:
             raise RuntimeError("Hardware arm status stale or clock invalid")
+        for feedback in self.gripper_feedback or ():
+            if feedback is not None and not -.01 <= now - feedback.timestamp_s <= MAX_AGE_S:
+                raise RuntimeError("Hardware gripper feedback stale or clock invalid")
 
     def report(self, limits=None):
         result = asdict(self)
@@ -67,7 +71,7 @@ class JointSnapshot:
 
 class FeedbackAssembler:
     """Publish only when all eight angle frames have advanced across both arms."""
-    def __init__(self, motor_feedback=False):
+    def __init__(self, motor_feedback=False, gripper_feedback=()):
         self.angles = {}
         self.drivers = {}
         self.dirty = set()
@@ -77,6 +81,11 @@ class FeedbackAssembler:
         self.motors = {}
         self.status = {}
         self.motor_dirty = set()
+        self.gripper_sides = tuple(gripper_feedback)
+        if any(s not in SIDES for s in self.gripper_sides) or len(set(self.gripper_sides)) != len(self.gripper_sides):
+            raise ValueError("Invalid gripper feedback sides")
+        self.grippers = {}
+        self.gripper_dirty = set()
 
     def feed(self, side, can_id, data, acquired):
         if side not in SIDES or len(data) != 8:
@@ -96,9 +105,15 @@ class FeedbackAssembler:
             self.motor_dirty.add(key)
         elif self.motor_feedback and can_id == 0x2A1:
             self.status[side] = (bytes(data), acquired)
+        elif can_id == 0x2A8 and side in self.gripper_sides:
+            from .gripper import decode_feedback
+            self.grippers[side] = decode_feedback(data, acquired)
+            self.gripper_dirty.add(side)
         else:
             return
         if self.motor_feedback and (len(self.motor_dirty) != 14 or len(self.status) != 2):
+            return
+        if any(s not in self.gripper_dirty for s in self.gripper_sides):
             return
         if len(self.dirty) == 8 and len(self.drivers) == 14:
             rows = [self.angles[s, i] for s in SIDES for i in ANGLE_IDS]
@@ -106,15 +121,18 @@ class FeedbackAssembler:
             stamps = [r[1] for r in rows]
             motors = [self.motors[s, i] for s in SIDES for i in MOTOR_IDS] if self.motor_feedback else []
             stamps += [t for _, t in motors]
+            stamps += [self.grippers[s].timestamp_s for s in self.gripper_sides]
             self.sequence += 1
             self.latest = JointSnapshot(self.sequence, min(stamps), max(stamps) - min(stamps),
                 JOINT_NAMES, tuple(v for row, _ in rows for v in row),
                 tuple(v for v, _ in states), min(t for _, t in states),
                 velocities=tuple(v for v, _ in motors) if motors else None,
                 arm_status=tuple(self.status[s][0] for s in SIDES) if self.motor_feedback else None,
-                status_timestamp_s=min(t for _, t in self.status.values()) if self.motor_feedback else None)
+                status_timestamp_s=min(t for _, t in self.status.values()) if self.motor_feedback else None,
+                gripper_feedback=tuple(self.grippers.get(s) for s in SIDES) if self.gripper_sides else None)
             self.dirty.clear()
             self.motor_dirty.clear()
+            self.gripper_dirty.clear()
 
     def snapshot(self, now):
         if self.latest is None:
@@ -151,9 +169,12 @@ def mapped_channels(path, sys_class_net=Path("/sys/class/net")):
 
 
 class PassiveCanFeedback:
-    def __init__(self, mapping=ROOT / "configs/hardware_mapping.json", motor_feedback=False):
+    def __init__(self, mapping=ROOT / "configs/hardware_mapping.json", motor_feedback=False, gripper_feedback=()):
+        if gripper_feedback:
+            from .gripper import official_codec
+            official_codec()  # Import/warm up before sockets can accumulate feedback.
         self.channels = mapped_channels(mapping)
-        self.assembler = FeedbackAssembler(motor_feedback=motor_feedback)
+        self.assembler = FeedbackAssembler(motor_feedback=motor_feedback, gripper_feedback=gripper_feedback)
         self.sockets = {}
         self.clock_offset = time.monotonic() - time.time()
         try:
@@ -166,6 +187,8 @@ class PassiveCanFeedback:
                 # Match standard data frames only; reject EFF/RTR flags.
                 # Error reception is disabled by SocketCAN's default ERR_FILTER.
                 ids = (*ANGLE_IDS, *DRIVER_IDS, *MOTOR_IDS, 0x2A1) if motor_feedback else (*ANGLE_IDS, *DRIVER_IDS)
+                if gripper_feedback:
+                    ids = (*ids, 0x2A8)
                 filters = b"".join(struct.pack("=II", cid, 0xC00007FF) for cid in ids)
                 sock.setsockopt(socket.SOL_CAN_RAW, socket.CAN_RAW_FILTER, filters)
                 sock.bind((channel,))

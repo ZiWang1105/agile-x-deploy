@@ -46,9 +46,9 @@ For simulation, the owned control loop runs in a joined thread while the native 
 
 This is a schema example, not a recommended startup command. Use `observation.as_action()` as the basis for a target, then modify the desired pose.
 
-Both arms are always specified together. Missing arms, extra fields, non-finite poses, non-unit quaternions, and gripper values other than integer 0/1 or null are rejected. Version 2 adds `gripper_open: null` to leave a gripper unchanged; this is also the default when constructing `ArmTarget`. An unavailable calibrated gripper measurement is `null` in `Observation.gripper_position`, never an invented zero. A non-null gripper command is rejected when that feedback is unavailable. Sim and real use the same version 3 types. Version 3 changes the TCP definition to the official NERO `ee`; method signatures and action fields are unchanged. Do not replay version 2 TCP targets. The 2 m coordinate envelope catches gross unit mistakes; it is not a reachable workspace or collision check.
+Both arms are always specified together. Missing arms, extra fields, non-finite poses, non-unit quaternions, and gripper values other than integer 0/1 or null are rejected. Version 2 adds `gripper_open: null` to leave a gripper unchanged; this is also the default when constructing `ArmTarget`. An unavailable normalized gripper measurement is `null` in `Observation.gripper_position`, never an invented zero. A non-null gripper command is rejected when that feedback is unavailable. Sim and real use the same version 3 types. Version 3 changes the TCP definition to the official NERO `ee`; method signatures and action fields are unchanged. Do not replay version 2 TCP targets. The 2 m coordinate envelope catches gross unit mistakes; it is not a reachable workspace or collision check.
 
-Encoder order is explicit: `left_joint1` through `left_joint7`, then `right_joint1` through `right_joint7`. Arm units are radians and radians/second. Gripper feedback is normalized physical travel, from 0 closed to 1 open; simulation maps this to 0–0.05 m travel of the first finger and couples the second finger with opposite displacement. It is not force feedback or an asserted calibrated jaw aperture. Real transport calibration must implement the same semantic quantity.
+Encoder order is explicit: `left_joint1` through `left_joint7`, then `right_joint1` through `right_joint7`. Arm units are radians and radians/second. Gripper feedback is normalized physical travel, from 0 closed to 1 open; simulation maps this to 0–0.05 m travel of the first finger and couples the second finger with opposite displacement. It is not force feedback or an asserted calibrated jaw aperture. The optional NERO gripper path divides official width feedback by the controller-reported maximum range. This preserves normalized travel semantics but does not independently verify the physical zero or finger geometry.
 
 TCPs are named `left_tcp` and `right_tcp`. The official NERO YAML defines `[0.1755, 0, -0.0235]` m translation and zero RPY relative to each `joint7` frame (the corresponding `link7` body in MuJoCo). The same definition drives observations, red handles, official IK targets and physical control. World/stand-frame targets are transformed into each arm's fixed base frame before solving. This definition replaces the old gripper-base finger-root TCP and has not been physically calibrated.
 
@@ -56,10 +56,17 @@ Observation timestamps use host monotonic acquisition time. Backend delivery mus
 
 ## Control and failure behavior
 
+The additive version 3 `Observation.gripper_states` field contains per-hand
+tracking phase, binary request, normalized position error/velocity, acquisition
+time, and available vendor width/force/enable reports. Sim and real share the
+same feedback tracker; unmeasured force is `None`. `reached` confirms an opening
+endpoint, while `stalled` reports stationary shortfall without asserting a grasp
+or changing motion. See [gripper feedback semantics](GRIPPER_CONTROL.md#official-control-and-host-supervision).
+
 - Control period: 0.01 s; simulated physics period: 0.002 s.
 - IK: two original AgileX `ArmIK` instances using Pinocchio/CasADi/IPOPT, synchronized to measured joints before solving. The NERO YAML supplies defaults; `configs/ik.yaml` overrides only `w_pos` to `40` and `w_ori` to `4`. All other objective weights and solver settings retain their official values. No local Jacobian fallback or coupled collision optimization remains. A downstream reference generator executes the joint solution within the selected speed/acceleration limits.
 - One joint-reference integrator; position limits from the supplied URDF intersected with live selected-controller bounds on hardware, and per-joint controller-reported speed/acceleration limits during tracking. Simulation uses the documented October 14 left-controller readback fixture for both arms. Discrete braking margins reduce speed near a limit. These are requested-motion limits, not measured-dynamics certification. No jerk bound is claimed.
-- Gripper references ramp at normalized travel rate 0.6/s (0.03 m/s per simulated finger).
+- Standalone simulation gripper references ramp at normalized travel rate 0.6/s (0.03 m/s per simulated finger). Opt-in commissioning gripper targets use firmware motion timing, with no additional host speed/acceleration ramp.
 - No arbitrary joint tracking-error cutoff or Cartesian velocity clip is applied. Firmware faults still latch HOLD.
 - Target admission requires an observation younger than 0.2 s with valid sequence and acquisition timestamps.
 - A target must be refreshed within 0.5 s. The viewer and example policy refresh every 0.1 s. A stopped policy loses motion ownership through lease expiry.
@@ -79,7 +86,7 @@ Native rendering follows the [MuJoCo passive-viewer API](https://mujoco.readthed
 
 ## Hardware boundary and remaining work
 
-`RealBackend` adapts a `HardwareTransport` to the same runtime. The generic adapter does not itself open CAN or auto-enable motors. `NeroTransport` provides the explicit single-arm NERO 1.21 commissioning implementation, hosted by `HardwareSession` in a separate process. Its physical observation includes timestamped joint angles and firmware-reported velocities; gripper travel is null. Its joint-position wire commands require explicit operator arming. `--backend real-commissioning` exposes that path, while `--backend commissioning-sim` exercises it against a simulated plant. The `sim` and receive-only `real-preview` modes remain separate and never enable hardware. See [hardware commissioning](HARDWARE_COMMISSIONING.md) for physical qualification status and limits.
+`RealBackend` adapts a `HardwareTransport` to the same runtime. The generic adapter does not itself open CAN or auto-enable motors. `NeroTransport` provides the explicit single-arm NERO 1.21 commissioning implementation, hosted by `HardwareSession` in a separate process. Its physical observation includes timestamped joint angles and firmware-reported velocities; gripper travel is null unless selected-side `--gripper` control is requested and fresh width/range feedback is available. Its joint-position wire commands require explicit operator arming. `--backend real-commissioning` exposes that path, while `--backend commissioning-sim` exercises it against a simulated plant. The `sim` and receive-only `real-preview` modes remain separate and never enable hardware. See [hardware commissioning](HARDWARE_COMMISSIONING.md) for physical qualification status and limits.
 
 Remaining qualification and extensions:
 

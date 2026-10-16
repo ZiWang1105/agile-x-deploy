@@ -146,7 +146,8 @@ def constrain_commissioning_drag(action, lift_target, side, workspace_radius_m=M
     if distance > workspace_radius_m:
         delta *= workspace_radius_m / distance
     arms = {s: getattr(lift_target, s) for s in SIDES}
-    arms[side] = ArmTarget(Pose(anchor + delta, arms[side].pose.quaternion_xyzw), None)
+    arms[side] = ArmTarget(Pose(anchor + delta, arms[side].pose.quaternion_xyzw),
+                           getattr(action, side).gripper_open)
     result = Action(**arms)
     limited = any(np.linalg.norm(pose_error(getattr(action, s).pose, getattr(result, s).pose)) > 1e-7
                   for s in SIDES)
@@ -163,6 +164,27 @@ def configure_handles(kin, sides):
         else:
             kin.model.geom_rgba[kin.model.geom_bodyid == body.id] = [.4, .4, .4, .4]
     return allowed
+
+
+def viewer_targets(observed, hardware_control=False):
+    """Hardware pose drags must not round measured jaw travel into open/close."""
+    if hardware_control:
+        return Action(*(ArmTarget(getattr(observed, f"{s}_tcp"), None) for s in SIDES))
+    return observed.as_action()
+
+
+def toggle_gripper(targets, observed, side, selected_side=None):
+    if selected_side is not None and side != selected_side:
+        raise ValueError("Only the selected arm's gripper is controllable in this session")
+    measured = observed.gripper_position[SIDES.index(side)]
+    if measured is None:
+        raise ValueError("Gripper unavailable; start the commissioning viewer with --gripper")
+    arms = {s: getattr(targets, s) for s in SIDES}
+    current = arms[side].gripper_open
+    if current is None:
+        current = int(measured >= .5)
+    arms[side] = ArmTarget(arms[side].pose, 1-current)
+    return Action(**arms)
 
 
 def run_viewer(robot: RobotInterface, duration=None, log_path=None, on_ready=None, feedback=None,
@@ -182,7 +204,7 @@ def run_viewer(robot: RobotInterface, duration=None, log_path=None, on_ready=Non
                 body = kin.model.body(kin.model.geom_bodyid[geom_id]).name
                 if body.startswith(f"{side}_gripper_link"):
                     kin.model.geom_rgba[geom_id, 3] = 0
-    targets = observed.as_action()
+    targets = viewer_targets(observed, hardware_control)
     kin.update(observed.joint_positions_rad, observed.gripper_position)
     write_handles(kin, targets)
     if feedback is not None:
@@ -211,6 +233,8 @@ def run_viewer(robot: RobotInterface, duration=None, log_path=None, on_ready=Non
     if hardware_control:
         log("session_config", side=robot.side, simulation=robot.simulation,
             workspace_radius_m=workspace_radius_m, ik="AgileX QuestArmTeleop ArmIK",
+            gripper_control=getattr(robot, "gripper_control", False),
+            gripper_force_n=getattr(robot, "gripper_force_n", None),
             ik_parameters=solver_parameters(), observation_schema_version=3)
 
     try:
@@ -278,18 +302,21 @@ def run_viewer(robot: RobotInterface, duration=None, log_path=None, on_ready=Non
                     if key == ord("M") and feedback is not None:
                         with viewer.lock():
                             viewer.opt.geomgroup[3] = 1 - viewer.opt.geomgroup[3]
-                    if key in (ord("1"), ord("2")) and usable and feedback is None and not hardware_control:
+                    if key in (ord("1"), ord("2")) and usable and feedback is None:
                         side = SIDES[key - ord("1")]
-                        arms = {s: getattr(targets, s) for s in SIDES}
-                        arms[side] = ArmTarget(arms[side].pose, 1 - arms[side].gripper_open)
-                        targets, changed = Action(**arms), True
+                        try:
+                            targets = toggle_gripper(targets, observed, side, robot.side if hardware_control else None)
+                            changed = True
+                            log("gripper_target", side=side, gripper_open=getattr(targets, side).gripper_open)
+                        except ValueError as error:
+                            message = str(error)
                 with viewer.lock():
                     kin.update(observed.joint_positions_rad, observed.gripper_position)
                     if hardware_snapshot is not None:
                         update_mirror(kin, hardware_snapshot)
                     kin.data.time = 1.
                     if reset:
-                        targets = observed.as_action()
+                        targets = viewer_targets(observed, hardware_control)
                         viewer.perturb.active = viewer.perturb.select = 0
                     write_handles(kin, targets)
                 viewer.sync(state_only=True)
@@ -298,7 +325,7 @@ def run_viewer(robot: RobotInterface, duration=None, log_path=None, on_ready=Non
                     if gui_reset:
                         robot.hold()
                         observed = robot.observe()
-                        targets, tracking = observed.as_action(), False
+                        targets, tracking = viewer_targets(observed, hardware_control), False
                         message = "HOLD. Display reset; plant preserved."
                         log("display_reset_hold")
                     try:
@@ -336,7 +363,7 @@ def run_viewer(robot: RobotInterface, duration=None, log_path=None, on_ready=Non
                         rejected = targets
                         robot.hold()
                         observed = robot.observe()
-                        targets, tracking = observed.as_action(), False
+                        targets, tracking = viewer_targets(observed, hardware_control), False
                         message = f"TARGET REJECTED; HOLD requested: {error}"
                         with viewer.lock():
                             viewer.perturb.active = viewer.perturb.select = 0
@@ -353,6 +380,9 @@ def run_viewer(robot: RobotInterface, duration=None, log_path=None, on_ready=Non
                 text = f"{message}\nMode: {observed.mode} | {observed.reason}\n"
                 text += "TCP error L/R: " + " / ".join(f"{np.linalg.norm(e[:3])*1000:.1f} mm, {np.degrees(np.linalg.norm(e[3:])):.1f} deg" for e in error)
                 text += "\nGripper travel L/R: " + " / ".join("unavailable" if g is None else f"{g:.2f}" for g in observed.gripper_position)
+                text += "\nGripper feedback L/R: " + " / ".join(
+                    state.phase + ("" if state.force_n is None else f" ({state.force_n:+.3f} N reported)")
+                    for state in observed.gripper_states)
                 if not fresh or observed.mode == "fault" or hardware_fault:
                     text += "\nFeedback stale or fault latched. Restart after inspection."
                 title = "DUAL NERO | Official AgileX IK"
@@ -371,6 +401,10 @@ def run_viewer(robot: RobotInterface, duration=None, log_path=None, on_ready=Non
                     title = f"NERO {'TEST SIMULATION' if robot.simulation else 'PHYSICAL ROBOT'} | {robot.side.upper()} ARM | {workspace_label}"
                     text += "\nE: ENABLE selected arm at current pose (only while UNARMED)"
                     text += "\nG: target 30 mm above the original arming pose (does not stack)"
+                    if getattr(robot, "gripper_control", False):
+                        key = "1" if robot.side == "left" else "2"
+                        text += f"\n{key}: toggle {robot.side} gripper | force setting: {robot.gripper_force_n:g} N"
+                        text += "\nGripper travel uses controller range; physical zero is not independently calibrated"
                     text += ("\nFull workspace: model joint limits apply; NO collision avoidance" if workspace_radius_m is None
                              else f"\nWorkspace: {workspace_label}, at/above start height")
                     if lift_target is not None:
@@ -416,6 +450,10 @@ def _main():
                         help="sim/real-preview never move hardware; real-commissioning starts unarmed and E enables one arm")
     parser.add_argument("--mapping", type=Path, default=ROOT / "configs/hardware_mapping.json")
     parser.add_argument("--side", choices=SIDES, help="Single arm selected for commissioning")
+    parser.add_argument("--gripper", action="store_true",
+                        help="Opt in to selected-gripper feedback/control; E alone does not open/close it")
+    parser.add_argument("--gripper-force-n", type=float, default=1.0,
+                        help="Official gripper force command (0–3 N, SDK default 1 N); not measured jaw force")
     parser.add_argument("--workspace", choices=("bounded", "full"), default="full",
                         help="full removes arming-relative motion caps; joint position/speed/acceleration limits remain, without collision avoidance")
     parser.add_argument("--workspace-radius-cm", type=float,
@@ -423,6 +461,10 @@ def _main():
     parser.add_argument("--duration", type=float, help="Close after this many seconds (smoke testing)")
     parser.add_argument("--log", type=Path, help="Append operator actions as JSONL")
     args = parser.parse_args()
+    if (args.gripper or args.gripper_force_n != 1.0) and args.backend not in ("real-commissioning", "commissioning-sim"):
+        parser.error("--gripper/--gripper-force-n apply to commissioning backends; sim already supports both grippers")
+    if args.gripper_force_n != 1.0 and not args.gripper:
+        parser.error("--gripper-force-n requires --gripper")
     from .backends import SimBackend
     from .runtime import Robot
     if args.backend in ("real-commissioning", "commissioning-sim"):
@@ -442,12 +484,15 @@ def _main():
         print(f"Session log: {args.log}", flush=True)
         with HardwareSession(args.side, mapping=args.mapping,
                              simulation=args.backend == "commissioning-sim",
-                             workspace_radius_m=workspace_radius_m) as robot:
+                             workspace_radius_m=workspace_radius_m, gripper_control=args.gripper,
+                             gripper_force_n=args.gripper_force_n) as robot:
             if workspace_radius_m is None:
                 print("FULL WORKSPACE: no starting-position radius, height floor, rotation cap or joint-excursion cap. Joint position limits and controller-reported speed/acceleration limits apply. NO collision avoidance.", flush=True)
             else:
                 print(f"Workspace radius: {workspace_radius_m * 100:g} cm. Joint excursion remains limited to 0.45 rad; not every target is reachable.", flush=True)
             print("Starts UNARMED. E enables the selected arm at its current posture.", flush=True)
+            if args.gripper:
+                print(f"Gripper opt-in: {'1' if args.side == 'left' else '2'} toggles the selected gripper after E. E and pose drags alone never command it. No automatic zeroing.", flush=True)
             print("G requests 30 mm above the arming pose; repeated presses do not stack. Space HOLDs; closing does NOT disable motors.", flush=True)
             run_viewer(robot, duration=args.duration, log_path=args.log, hardware_control=True)
         return

@@ -1,7 +1,8 @@
 """Explicitly armed, single-arm NERO 1.21 commissioning transport.
 
 This is a supervised free-space commissioning tool, not collision-safe general
-teleoperation. No constructor enables motors. Grippers are never commanded.
+teleoperation. No constructor enables motors. Optional gripper control uses the
+official codec and starts only after an explicit selected-gripper target.
 Wire encoding was reviewed against official pyAgxArm commit
 1ae40ad4755ca25ad32bece3ab42325698185fc7 (Nero v121, joint position mode).
 """
@@ -52,10 +53,12 @@ def position_frames(q):
 
 class MotionGuard:
     """Pure admission checks shared by the wire transport and offline tests."""
-    def __init__(self, side, seed, limits, kinematics=None, workspace_radius_m=None, motion_limits=None):
+    def __init__(self, side, seed, limits, kinematics=None, workspace_radius_m=None, motion_limits=None,
+                 gripper_control=False):
         if side not in SIDES:
             raise ValueError("Select one arm: left or right")
         self.side = side
+        self.gripper_control = gripper_control
         self.workspace_radius_m = validate_workspace_radius(workspace_radius_m)
         self.indices = slice(SIDES.index(side)*7, SIDES.index(side)*7+7)
         self.seed = np.asarray(finite_tuple(seed, 14, "arming pose"))
@@ -80,7 +83,7 @@ class MotionGuard:
     def action(self, action):
         for side in SIDES:
             arm = getattr(action, side)
-            if arm.gripper_open is not None:
+            if arm.gripper_open is not None and (not self.gripper_control or side != self.side):
                 raise ValueError("Hardware gripper control is unavailable; use None")
             delta = pose_error(self.poses[side], arm.pose)
             if side != self.side:
@@ -127,7 +130,8 @@ not, the last bounded command is retained. It never disables motors. Sustained
 holding after host/power/CAN failure is not certified by this software.
 """
     def __init__(self, side, mapping=ROOT / "configs/hardware_mapping.json",
-                 commissioning=ROOT / "configs/commissioning.json", workspace_radius_m=None):
+                 commissioning=ROOT / "configs/commissioning.json", workspace_radius_m=None,
+                 gripper_control=False, gripper_force_n=1.0):
         if side not in SIDES:
             raise ValueError("Select one arm")
         config = json.loads(Path(commissioning).read_text())
@@ -136,6 +140,14 @@ holding after host/power/CAN failure is not certified by this software.
                 config.get("static_model_posture", {}).get("confirmed_by_user")):
             raise RuntimeError("Mounting, support, controller orientation and model posture must be confirmed")
         self.side = side
+        self.gripper_control = gripper_control
+        self.gripper_active = False
+        self.gripper_started = None
+        self.gripper_force_n = gripper_force_n
+        self.gripper_range_m = None
+        if gripper_control:
+            from .gripper import validate_force
+            validate_force(gripper_force_n)
         self.workspace_radius_m = validate_workspace_radius(workspace_radius_m)
         self.side_index = SIDES.index(side)
         self.indices = slice(self.side_index*7, self.side_index*7+7)
@@ -162,10 +174,16 @@ holding after host/power/CAN failure is not certified by this software.
             firmware = query_firmware(mapping)
             if firmware["missing"] or any(v["software_version"] != "1.21" for v in firmware["firmware"].values()):
                 raise RuntimeError("This commissioning transport supports verified firmware 1.21 only")
-            self.reader = PassiveCanFeedback(mapping, motor_feedback=True)
+            options = {"gripper_feedback": (side,)} if gripper_control else {}
+            self.reader = PassiveCanFeedback(mapping, motor_feedback=True, **options)
             self.last = self.reader.read(timeout=1.)
             if any(v & 0x40 for v in self.last.driver_status):
                 raise RuntimeError("Start with both arms disabled; another controller may own motion")
+            if gripper_control:
+                from .gripper import query_range
+                self.gripper_range_m = query_range(self.reader.channels[side])
+                self.last = self.reader.read(timeout=1.)
+                self._gripper_feedback()
         except BaseException:
             self.close()
             raise
@@ -205,8 +223,31 @@ holding after host/power/CAN failure is not certified by this software.
                 raise RuntimeError("Selected arm lost motor enable")
             if status[0] != 1 or status[1] != 0 or status[2] != 1 or any(status[6:8]):
                 raise RuntimeError(f"Selected arm is not healthy CAN joint mode: {status.hex()}")
+        grippers = [None, None]
+        if self.gripper_control:
+            feedback = self._gripper_feedback()
+            grippers[self.side_index] = feedback.normalized(self.gripper_range_m)
+            if self.gripper_started is not None and time.monotonic()-self.gripper_started > .5 and not feedback.enabled:
+                raise RuntimeError("Selected gripper did not enable or lost enable")
         return EncoderSample(self.last.sequence, self.last.timestamp_s, JOINT_NAMES,
-                             self.last.positions, self.last.velocities, (None, None))
+                             self.last.positions, self.last.velocities, tuple(grippers),
+                             self.last.gripper_feedback if self.gripper_control else (None, None))
+
+    def _gripper_feedback(self):
+        if self.last.gripper_feedback is None or self.last.gripper_feedback[self.side_index] is None:
+            raise RuntimeError("Selected gripper feedback unavailable")
+        feedback = self.last.gripper_feedback[self.side_index]
+        feedback.validate(time.monotonic())
+        feedback.normalized(self.gripper_range_m)
+        return feedback
+
+    def activate_gripper(self, action):
+        """Called only after the complete action has passed runtime admission."""
+        if getattr(action, self.side).gripper_open is not None:
+            if not self.armed or not self.gripper_control:
+                raise RuntimeError("Selected gripper control is not armed")
+            self._gripper_feedback()
+            self.gripper_active = True
 
     def arm(self):
         if self.armed or self.writer is not None:
@@ -229,7 +270,8 @@ holding after host/power/CAN failure is not certified by this software.
             if any(v & 0x40 for v in self.last.driver_status):
                 raise RuntimeError("Motor enable changed during limit readback")
             self.guard = MotionGuard(self.side, sample.positions, self.kin.limits, self.kin,
-                                     workspace_radius_m=self.workspace_radius_m, motion_limits=limits)
+                                     workspace_radius_m=self.workspace_radius_m, motion_limits=limits,
+                                     gripper_control=self.gripper_control)
             print(f"{self.side} controller limits: speed={limits.velocity.tolist()} rad/s, "
                   f"acceleration={limits.acceleration.tolist()} rad/s²; firmware speed=100%", flush=True)
             self.last_command = np.asarray(sample.positions[self.indices])
@@ -267,14 +309,25 @@ holding after host/power/CAN failure is not certified by this software.
             return  # Observe-only startup; zero hardware motion writes.
         if self.fault:
             raise RuntimeError(self.fault)
-        if any(g is not None for g in grippers):
+        if any(g is not None and (not self.gripper_control or i != self.side_index)
+               for i, g in enumerate(grippers)):
             raise ValueError("Hardware grippers are not commissioned")
         if time.monotonic() - self.last_send > COMMAND_TIMEOUT:
             self.fault = "Hardware command watchdog expired"
             self.hold()
             raise RuntimeError(self.fault)
         selected = self.guard.command(positions, self.last.positions)
-        self._send(position_frames(selected))
+        frames = position_frames(selected)
+        if self.gripper_active:
+            from .gripper import width_frame
+            self._gripper_feedback()
+            fraction = grippers[self.side_index]
+            if fraction is None:
+                raise RuntimeError("Active gripper reference unavailable")
+            frames.append(width_frame(fraction, self.gripper_range_m, self.gripper_force_n))
+        self._send(frames)
+        if self.gripper_active and self.gripper_started is None:
+            self.gripper_started = time.monotonic()
         self.last_command = selected.copy()
 
     def hold(self):
@@ -292,7 +345,23 @@ holding after host/power/CAN failure is not certified by this software.
             self.guard.hold(latest.positions)
         except (RuntimeError, OSError):
             pass
-        self._send(position_frames(self.last_command))
+        frames = position_frames(self.last_command)
+        gripper_error = None
+        if self.gripper_active and self.last is not None and self.last.gripper_feedback:
+            feedback = self.last.gripper_feedback[self.side_index]
+            # HOLD never enables a disabled/faulted gripper. If feedback is
+            # stale, request its last observed position, not the distant goal;
+            # actual stopping is unconfirmed when communication is lost.
+            if feedback is not None and feedback.enabled and not feedback.status & 0x3F:
+                from .gripper import width_frame
+                try:
+                    frames.append(width_frame(float(np.clip(feedback.normalized(self.gripper_range_m), 0, 1)),
+                                              self.gripper_range_m, self.gripper_force_n))
+                except (ValueError, RuntimeError) as error:
+                    gripper_error = error
+        self._send(frames)
+        if gripper_error:
+            raise RuntimeError(f"Arm HOLD sent; gripper HOLD unavailable: {gripper_error}")
 
     def close(self):
         if self.closed:

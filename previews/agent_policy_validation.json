@@ -1,0 +1,163 @@
+{
+  "date": "2026-10-15",
+  "successful_default_run": "cube_agent_08",
+  "model": "google/gemini-3.8-flash",
+  "full_suite_tests_passed": 108,
+  "full_suite_time_s": 135.195,
+  "input_audit": {
+    "requests_checked": 7,
+    "grounding_results_reproduced": 1,
+    "sensor_boundary_passed": true
+  },
+  "evaluation": {
+    "success": true,
+    "final_retention_s": 32.60000000003002,
+    "longest_retention_s": 32.60000000003002,
+    "max_lift_m": 0.15218859454195027,
+    "robot_environment_collision_frames": 0,
+    "criterion": "lift >= 0.1 m, opposing fingers, no support, retain >= 10 s through final verification; no arm/environment collision"
+  },
+  "physical_policy_executed": false,
+  "physical_preflight": {
+    "status": "passed_unarmed",
+    "api_calls": 0,
+    "depth_valid_fraction": 0.34478298611111113,
+    "camera_encoder_receipt_skew_ms": 11.681532952934504,
+    "depth_source": "OpenCV StereoSGBM",
+    "calibration_status": "candidate_not_physically_validated",
+    "physical_arm_capability": "single selected arm"
+  },
+  "trials": [
+    {
+      "status": "failed",
+      "model": "google/gemini-3.1-pro-preview",
+      "api_calls": 7,
+      "api_cost_usd": 0.4918346,
+      "evaluation": {
+        "success": false,
+        "final_retention_s": 0,
+        "longest_retention_s": 0.0,
+        "max_lift_m": -0.0005885999999999947,
+        "robot_environment_collision_frames": 141,
+        "criterion": "lift >= 0.1 m, opposing fingers, no support, retain >= 10 s through final verification; no arm/environment collision"
+      },
+      "error": "KeyboardInterrupt: ",
+      "run": "cube_agent_01"
+    },
+    {
+      "status": "failed",
+      "model": "google/gemini-3.8-flash",
+      "api_calls": 2,
+      "api_cost_usd": 0.024339,
+      "evaluation": {
+        "success": false,
+        "final_retention_s": 0,
+        "longest_retention_s": 0.0,
+        "max_lift_m": -0.0005885999999999947,
+        "robot_environment_collision_frames": 12,
+        "criterion": "lift >= 0.1 m, opposing fingers, no support, retain >= 10 s through final verification; no arm/environment collision"
+      },
+      "error": "RuntimeError: RuntimeError: Invalid acquisition timestamp or gripper feedback; HOLD unconfirmed",
+      "run": "cube_agent_02"
+    },
+    {
+      "status": "failed",
+      "model": "google/gemini-3.8-flash",
+      "api_calls": 2,
+      "api_cost_usd": 0.02740275,
+      "evaluation": {
+        "success": false,
+        "final_retention_s": 0,
+        "longest_retention_s": 0.0,
+        "max_lift_m": -0.0005885999999999947,
+        "robot_environment_collision_frames": 65,
+        "criterion": "lift >= 0.1 m, opposing fingers, no support, retain >= 10 s through final verification; no arm/environment collision"
+      },
+      "error": "RuntimeError: RuntimeError: Invalid acquisition timestamp or gripper feedback; HOLD unconfirmed",
+      "run": "cube_agent_03"
+    },
+    {
+      "status": "failed",
+      "model": "google/gemini-3.8-flash",
+      "api_calls": 2,
+      "api_cost_usd": 0.01904925,
+      "evaluation": {
+        "success": false,
+        "final_retention_s": 0,
+        "longest_retention_s": 0.0,
+        "max_lift_m": -0.0005885999999999947,
+        "robot_environment_collision_frames": 0,
+        "criterion": "lift >= 0.1 m, opposing fingers, no support, retain >= 10 s through final verification; no arm/environment collision"
+      },
+      "error": "RuntimeError: RuntimeError: Invalid acquisition timestamp or gripper feedback; HOLD unconfirmed",
+      "run": "cube_agent_04"
+    },
+    {
+      "status": "completed",
+      "model": "google/gemini-3.8-flash",
+      "api_calls": 6,
+      "api_cost_usd": 0.058124999999999996,
+      "evaluation": {
+        "success": false,
+        "final_retention_s": 0,
+        "longest_retention_s": 27.51000000002497,
+        "max_lift_m": 0.14681057958960014,
+        "robot_environment_collision_frames": 1316,
+        "criterion": "lift >= 0.1 m, opposing fingers, no support, retain >= 10 s through final verification; no arm/environment collision"
+      },
+      "error": null,
+      "run": "cube_agent_05"
+    },
+    {
+      "status": "completed",
+      "model": "google/gemini-3.8-flash",
+      "api_calls": 14,
+      "api_cost_usd": 0.15153300000000003,
+      "evaluation": {
+        "success": true,
+        "final_retention_s": 13.450000000049144,
+        "longest_retention_s": 13.450000000049144,
+        "max_lift_m": 0.147606202615431,
+        "robot_environment_collision_frames": 0,
+        "criterion": "lift >= 0.1 m, opposing fingers, no support, retain >= 10 s through final verification; no arm/environment collision"
+      },
+      "error": null,
+      "run": "cube_agent_06"
+    },
+    {
+      "status": "failed",
+      "model": "google/gemini-3.1-pro-preview",
+      "api_calls": 6,
+      "api_cost_usd": 0.21073999999999998,
+      "evaluation": {
+        "success": false,
+        "final_retention_s": 0,
+        "longest_retention_s": 0.0,
+        "max_lift_m": -0.0005885999999999947,
+        "robot_environment_collision_frames": 0,
+        "criterion": "lift >= 0.1 m, opposing fingers, no support, retain >= 10 s through final verification; no arm/environment collision"
+      },
+      "error": "KeyboardInterrupt: ",
+      "run": "cube_agent_07"
+    },
+    {
+      "status": "completed",
+      "model": "google/gemini-3.8-flash",
+      "api_calls": 7,
+      "api_cost_usd": 0.06926550000000001,
+      "evaluation": {
+        "success": true,
+        "final_retention_s": 32.60000000003002,
+        "longest_retention_s": 32.60000000003002,
+        "max_lift_m": 0.15218859454195027,
+        "robot_environment_collision_frames": 0,
+        "criterion": "lift >= 0.1 m, opposing fingers, no support, retain >= 10 s through final verification; no arm/environment collision"
+      },
+      "error": null,
+      "run": "cube_agent_08"
+    }
+  ],
+  "video": "previews/agent_cube_pickup.mp4",
+  "evidence": "validation/agent_cube_20261015",
+  "video_sha256": "4df3947ebcee163020f2e132a016e2127acb20e7fb87816725a133b71284d36c"
+}

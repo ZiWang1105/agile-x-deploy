@@ -23,8 +23,10 @@ OPERATOR_TIMEOUT = .2
 
 class SimulatedCommissioningTransport:
     """Explicit test plant for commissioning UI and process/watchdog tests."""
-    def __init__(self, side, workspace_radius_m=None, **_):
+    def __init__(self, side, workspace_radius_m=None, gripper_control=False, **_):
         self.side = side
+        self.gripper_control = gripper_control
+        self.gripper_active = False
         self.workspace_radius_m = validate_workspace_radius(workspace_radius_m)
         self.plant = SimBackend()
         self.armed = False
@@ -32,13 +34,19 @@ class SimulatedCommissioningTransport:
         self.closed = False
 
     def read_encoders(self):
-        return replace(self.plant.read(), grippers=(None, None))
+        sample = self.plant.read()
+        return replace(sample, grippers=tuple(g if self.gripper_control and s == self.side else None
+                                             for s, g in zip(SIDES, sample.grippers)))
 
     def arm(self):
         sample = self.read_encoders()
         self.guard = MotionGuard(self.side, sample.positions, self.plant.kinematics.limits,
-                                 workspace_radius_m=self.workspace_radius_m)
+                                 workspace_radius_m=self.workspace_radius_m, gripper_control=self.gripper_control)
         self.armed = True
+
+    def activate_gripper(self, action):
+        if getattr(action, self.side).gripper_open is not None:
+            self.gripper_active = True
 
     def send_positions(self, q, grippers):
         if self.armed:
@@ -46,7 +54,10 @@ class SimulatedCommissioningTransport:
             self.guard.command(q, sample.positions)
             command = np.array(sample.positions)
             command[self.guard.indices] = q[self.guard.indices]
-            self.plant.write(command, [.36, .36])
+            grip = [.36, .36]
+            if self.gripper_active:
+                grip[SIDES.index(self.side)] = grippers[SIDES.index(self.side)]
+            self.plant.write(command, grip)
             self.plant.advance()
 
     def hold(self):
@@ -59,7 +70,8 @@ class SimulatedCommissioningTransport:
         self.plant.close()
 
 
-def control_worker(connection, side, mapping, commissioning, simulation, workspace_radius_m):
+def control_worker(connection, side, mapping, commissioning, simulation, workspace_radius_m,
+                   gripper_control=False, gripper_force_n=1.0):
     # Terminal Ctrl+C goes to both processes. Let the viewer request HOLD and
     # close over IPC instead of interrupting the owner during a CAN operation.
     signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -73,8 +85,11 @@ def control_worker(connection, side, mapping, commissioning, simulation, workspa
         ik = OfficialDualIK(Kinematics(), initial_positions())
         factory = SimulatedCommissioningTransport if simulation else NeroTransport
         transport = factory(side=side, mapping=mapping, commissioning=commissioning,
-                            workspace_radius_m=workspace_radius_m)
+                            workspace_radius_m=workspace_radius_m,
+                            gripper_control=gripper_control, gripper_force_n=gripper_force_n)
         robot = Robot(RealBackend(transport), ik=ik)
+        if gripper_control:
+            robot.controller.gripper_rate = None
         connection.send((0, True, "ready"))
         while True:
             now = time.monotonic()
@@ -143,6 +158,8 @@ def control_worker(connection, side, mapping, commissioning, simulation, workspa
                     action, observed_id = payload
                     transport.guard.action(action)
                     result = robot.submit_target(action, observed_id)
+                    if gripper_control:
+                        transport.activate_gripper(action)
                     robot.target_deadline = time.monotonic() + .2
                     heartbeat = time.monotonic()
                 elif operation == "hold":
@@ -181,8 +198,13 @@ def control_worker(connection, side, mapping, commissioning, simulation, workspa
 class HardwareSession:
     def __init__(self, side, mapping=ROOT / "configs/hardware_mapping.json",
                  commissioning=ROOT / "configs/commissioning.json", simulation=False,
-                 workspace_radius_m=None):
+                 workspace_radius_m=None, gripper_control=False, gripper_force_n=1.0):
         self.side = side
+        self.gripper_control = gripper_control
+        self.gripper_force_n = gripper_force_n
+        if gripper_control:
+            from .gripper import validate_force
+            validate_force(gripper_force_n)
         self.workspace_radius_m = validate_workspace_radius(workspace_radius_m)
         self.simulation = simulation
         self.request_id = 0
@@ -190,7 +212,8 @@ class HardwareSession:
         context = mp.get_context("spawn")
         self.connection, child = context.Pipe()
         self.process = context.Process(target=control_worker,
-            args=(child, side, str(mapping), str(commissioning), simulation, self.workspace_radius_m),
+            args=(child, side, str(mapping), str(commissioning), simulation, self.workspace_radius_m,
+                  gripper_control, gripper_force_n),
             name="nero-control-owner", daemon=False)
         self.process.start()
         child.close()

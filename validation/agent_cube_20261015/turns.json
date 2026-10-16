@@ -1,0 +1,464 @@
+[
+  {
+    "turn": 0,
+    "decision": {
+      "action": null,
+      "duration_s": 1.0,
+      "done": false,
+      "summary": "Inspect red cube surface and open left gripper.",
+      "grounding": {
+        "arm": "left",
+        "pixel_uv_1000": [
+          433,
+          205
+        ],
+        "offset_base_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "phase": "inspect",
+        "pixel_uv": [
+          277,
+          74
+        ],
+        "surface_base_m": [
+          0.3683080086779237,
+          0.12879250849532925,
+          0.14963554356770736
+        ],
+        "pinch_base_m": [
+          0.3683080086779237,
+          0.12879250849532925,
+          0.14963554356770736
+        ]
+      }
+    },
+    "execution": {
+      "state": "inspected",
+      "grounding": {
+        "arm": "left",
+        "pixel_uv_1000": [
+          433,
+          205
+        ],
+        "offset_base_m": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "phase": "inspect",
+        "pixel_uv": [
+          277,
+          74
+        ],
+        "surface_base_m": [
+          0.3683080086779237,
+          0.12879250849532925,
+          0.14963554356770736
+        ],
+        "pinch_base_m": [
+          0.3683080086779237,
+          0.12879250849532925,
+          0.14963554356770736
+        ]
+      }
+    }
+  },
+  {
+    "turn": 1,
+    "decision": {
+      "action": {
+        "left": {
+          "pose": {
+            "position_m": [
+              0.3683080086779237,
+              0.12879250849532925,
+              0.235
+            ],
+            "quaternion_xyzw": [
+              0.5,
+              -0.5,
+              -0.5,
+              -0.5
+            ]
+          },
+          "gripper_open": 1
+        },
+        "right": {
+          "pose": {
+            "position_m": [
+              0.36003382228832664,
+              -0.3000058959469221,
+              0.24485500445050568
+            ],
+            "quaternion_xyzw": [
+              -0.4995021338302078,
+              0.4998512779507648,
+              0.5001983529778233,
+              0.5004477254502507
+            ]
+          },
+          "gripper_open": null
+        }
+      },
+      "duration_s": 2.5,
+      "done": false,
+      "summary": "Move left hand above red cube pre-grasp pose.",
+      "grounding": null
+    },
+    "execution": {
+      "state": "holding_arms",
+      "grounding": null,
+      "arrived": true,
+      "tcp_error_xyz_rotvec": {
+        "left": [
+          -4.033666811098513e-05,
+          -1.025463327242182e-05,
+          5.241881027473472e-05,
+          0.001702703502799181,
+          -0.00048798573711877766,
+          3.121803997168869e-06
+        ],
+        "right": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    }
+  },
+  {
+    "turn": 2,
+    "decision": {
+      "action": {
+        "left": {
+          "pose": {
+            "position_m": [
+              0.3683,
+              0.1288,
+              0.11
+            ],
+            "quaternion_xyzw": [
+              0.5,
+              -0.5,
+              -0.5,
+              -0.5
+            ]
+          },
+          "gripper_open": 1
+        },
+        "right": {
+          "pose": {
+            "position_m": [
+              0.36003382228832664,
+              -0.3000058959469221,
+              0.24485500445050568
+            ],
+            "quaternion_xyzw": [
+              -0.4995021338302078,
+              0.4998512779507648,
+              0.5001983529778233,
+              0.5004477254502507
+            ]
+          },
+          "gripper_open": null
+        }
+      },
+      "duration_s": 2.5,
+      "done": false,
+      "summary": "Lower left hand around the red cube to grasp height.",
+      "grounding": null
+    },
+    "execution": {
+      "state": "holding_arms",
+      "grounding": null,
+      "arrived": true,
+      "tcp_error_xyz_rotvec": {
+        "left": [
+          4.590211551369627e-05,
+          -5.07153475755584e-05,
+          6.918464513951117e-05,
+          0.0008150838842262053,
+          -0.00013700784981164824,
+          -0.0007534330896096635
+        ],
+        "right": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    }
+  },
+  {
+    "turn": 3,
+    "decision": {
+      "action": {
+        "left": {
+          "pose": {
+            "position_m": [
+              0.36825394960437613,
+              0.12885077423622635,
+              0.10993100512244827
+            ],
+            "quaternion_xyzw": [
+              0.5003576716401356,
+              -0.5000496718422606,
+              -0.5000186718626043,
+              -0.49957367215463544
+            ]
+          },
+          "gripper_open": 0
+        },
+        "right": {
+          "pose": {
+            "position_m": [
+              0.36003382228832664,
+              -0.3000058959469221,
+              0.24485500445050568
+            ],
+            "quaternion_xyzw": [
+              -0.4995021338302078,
+              0.4998512779507648,
+              0.5001983529778233,
+              0.5004477254502507
+            ]
+          },
+          "gripper_open": null
+        }
+      },
+      "duration_s": 1.5,
+      "done": false,
+      "summary": "Close left gripper to grasp the red cube.",
+      "grounding": null
+    },
+    "execution": {
+      "state": "holding_arms",
+      "grounding": null,
+      "arrived": true,
+      "tcp_error_xyz_rotvec": {
+        "left": [
+          -3.474664094782476e-06,
+          -5.037911488786628e-06,
+          4.2072727175379576e-05,
+          0.0009063249551049108,
+          7.34145166845023e-05,
+          -0.0005773937395390918
+        ],
+        "right": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    }
+  },
+  {
+    "turn": 4,
+    "decision": {
+      "action": {
+        "left": {
+          "pose": {
+            "position_m": [
+              0.368257072180526,
+              0.12885618438876892,
+              0.26500002224357094
+            ],
+            "quaternion_xyzw": [
+              0.5007469538454044,
+              -0.500112953903841,
+              -0.4999179539218144,
+              -0.499220953986058
+            ]
+          },
+          "gripper_open": 0
+        },
+        "right": {
+          "pose": {
+            "position_m": [
+              0.36003382228832664,
+              -0.3000058959469221,
+              0.24485500445050568
+            ],
+            "quaternion_xyzw": [
+              -0.4995021338302078,
+              0.4998512779507648,
+              0.5001983529778233,
+              0.5004477254502507
+            ]
+          },
+          "gripper_open": null
+        }
+      },
+      "duration_s": 3.0,
+      "done": false,
+      "summary": "Lift red cube at least 10 cm above table.",
+      "grounding": null
+    },
+    "execution": {
+      "state": "holding_arms",
+      "grounding": null,
+      "arrived": true,
+      "tcp_error_xyz_rotvec": {
+        "left": [
+          0.0001337157277549461,
+          -7.803444302800777e-05,
+          0.0002546799270418121,
+          0.0015423055870365794,
+          -0.001066224710850273,
+          0.00010498763445084412
+        ],
+        "right": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    }
+  },
+  {
+    "turn": 5,
+    "decision": {
+      "action": {
+        "left": {
+          "pose": {
+            "position_m": [
+              0.3681247363610738,
+              0.12893137332434917,
+              0.2647452330836334
+            ],
+            "quaternion_xyzw": [
+              0.5008419286201641,
+              -0.5007972351988744,
+              -0.49977042508846253,
+              -0.49858701744038164
+            ]
+          },
+          "gripper_open": 0
+        },
+        "right": {
+          "pose": {
+            "position_m": [
+              0.36003382228832664,
+              -0.3000058959469221,
+              0.24485500445050568
+            ],
+            "quaternion_xyzw": [
+              -0.4995021338302078,
+              0.4998512779507648,
+              0.5001983529778233,
+              0.5004477254502507
+            ]
+          },
+          "gripper_open": null
+        }
+      },
+      "duration_s": 6.0,
+      "done": false,
+      "summary": "Hold red cube securely in the air (first hold interval).",
+      "grounding": null
+    },
+    "execution": {
+      "state": "holding_arms",
+      "grounding": null,
+      "arrived": true,
+      "tcp_error_xyz_rotvec": {
+        "left": [
+          0.00013070516705737667,
+          -7.83436808171889e-05,
+          0.0002532378056584461,
+          0.0015390468723135036,
+          -0.0010534299856580398,
+          0.00010161982812906271
+        ],
+        "right": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    }
+  },
+  {
+    "turn": 6,
+    "decision": {
+      "action": {
+        "left": {
+          "pose": {
+            "position_m": [
+              0.36799546337949823,
+              0.12900684236797283,
+              0.26449189328654543
+            ],
+            "quaternion_xyzw": [
+              -0.5009397512247715,
+              0.5014762055095232,
+              0.4996208642056466,
+              0.497955794223782
+            ]
+          },
+          "gripper_open": 0
+        },
+        "right": {
+          "pose": {
+            "position_m": [
+              0.36003382228832664,
+              -0.3000058959469221,
+              0.24485500445050568
+            ],
+            "quaternion_xyzw": [
+              -0.4995021338302078,
+              0.4998512779507648,
+              0.5001983529778233,
+              0.5004477254502507
+            ]
+          },
+          "gripper_open": null
+        }
+      },
+      "duration_s": 5.0,
+      "done": true,
+      "summary": "Hold red cube securely in the air to complete at least 10 seconds of holding.",
+      "grounding": null
+    },
+    "execution": {
+      "state": "holding_arms",
+      "grounding": null,
+      "arrived": true,
+      "tcp_error_xyz_rotvec": {
+        "left": [
+          0.0001267957944000031,
+          -7.861659647673269e-05,
+          0.000251335666504926,
+          0.001535923932959626,
+          -0.0010374941125308236,
+          9.824879467032051e-05
+        ],
+        "right": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    }
+  }
+]

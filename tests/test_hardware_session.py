@@ -143,6 +143,8 @@ class HardwareTests(unittest.TestCase):
             def close(self): pass
 
         t = NeroTransport.__new__(NeroTransport)
+        t.gripper_control = t.gripper_active = False
+        t.gripper_started = None
         t.side, t.side_index, t.indices = "left", 0, slice(0, 7)
         t.workspace_radius_m = .03
         t.kin, t.reader = Kinematics(), Reader()

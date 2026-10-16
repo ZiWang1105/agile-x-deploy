@@ -12,6 +12,7 @@ import mujoco
 import numpy as np
 
 from .contract import JOINT_NAMES, SIDES, finite_tuple
+from .gripper import GripperFeedback
 from .model import CONTROL_DT, Kinematics, initial_positions, load_model
 
 
@@ -23,6 +24,7 @@ class EncoderSample:
     positions: tuple[float, ...]
     velocities: tuple[float, ...]
     grippers: tuple[float | None, ...]
+    gripper_feedback: tuple[GripperFeedback | None, ...] = (None, None)
 
     def validate(self):
         if self.joint_names != JOINT_NAMES:
@@ -36,6 +38,13 @@ class EncoderSample:
             raise ValueError("Invalid acquisition timestamp or gripper feedback")
         if type(self.sequence) is not int or self.sequence < 0:
             raise ValueError("Invalid encoder sequence")
+        if len(self.gripper_feedback) != 2:
+            raise ValueError("Expected two optional raw gripper reports")
+        for position, feedback in zip(self.grippers, self.gripper_feedback):
+            if feedback is not None:
+                if position is None:
+                    raise ValueError("Gripper report requires measured travel")
+                feedback.validate(time.monotonic())
 
 
 class Backend(Protocol):
@@ -47,8 +56,8 @@ class Backend(Protocol):
 
 
 class SimBackend:
-    def __init__(self, joint_positions=None):
-        self.model = load_model()
+    def __init__(self, joint_positions=None, *, model=None):
+        self.model = load_model() if model is None else model
         self.data = mujoco.MjData(self.model)
         self.kinematics = Kinematics(self.model)
         self.qids, self.dids = self.kinematics.qids, self.kinematics.dids

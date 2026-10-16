@@ -31,6 +31,7 @@ class Controller:
         self.reference = np.array(q, dtype=float)
         self.velocity = np.zeros(14)
         self.grippers = list(grippers)
+        self.gripper_rate = .6  # Simulated actuator reference rate; hardware overrides to None.
         self.set_motion_limits(max_velocity, max_acceleration)
         self.ik = ik if ik is not None else OfficialDualIK(kinematics, q)
         self.hold(q, grippers)
@@ -99,5 +100,9 @@ class Controller:
             if goal is not None:
                 if self.grippers[i] is None:
                     raise ValueError("Gripper command requires calibrated feedback")
-                self.grippers[i] += float(np.clip(goal - self.grippers[i], -.6 * CONTROL_DT, .6 * CONTROL_DT))
+                if self.gripper_rate is None:
+                    self.grippers[i] = float(goal)  # Firmware owns physical gripper motion timing.
+                else:
+                    step = self.gripper_rate * CONTROL_DT
+                    self.grippers[i] += float(np.clip(goal - self.grippers[i], -step, step))
         return self.reference.copy(), self.grippers.copy(), errors

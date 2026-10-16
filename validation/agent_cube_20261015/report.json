@@ -1,0 +1,125 @@
+{
+  "backend": "sim",
+  "model": "google/gemini-3.8-flash",
+  "physical_motion_requested": false,
+  "status": "completed",
+  "policy_declared_done": true,
+  "final_observation": {
+    "observation_id": 5916,
+    "timestamp_s": 414945.371614024,
+    "joint_names": [
+      "left_joint1",
+      "left_joint2",
+      "left_joint3",
+      "left_joint4",
+      "left_joint5",
+      "left_joint6",
+      "left_joint7",
+      "right_joint1",
+      "right_joint2",
+      "right_joint3",
+      "right_joint4",
+      "right_joint5",
+      "right_joint6",
+      "right_joint7"
+    ],
+    "joint_positions_rad": [
+      -1.691957838683226,
+      1.3306455600151976,
+      0.8013138502126346,
+      1.5556169774388855,
+      0.3376498692397832,
+      -0.7297243783853863,
+      0.36781411807703324,
+      1.4798779834401767,
+      0.7493634039905221,
+      -0.5271054876098322,
+      1.6018172757979756,
+      -1.12210007271672,
+      0.6564488454199543,
+      0.790286152537976
+    ],
+    "joint_velocities_rad_s": [
+      -2.7591244721963683e-06,
+      5.584547286368214e-06,
+      5.080294805642436e-06,
+      2.4805775396689956e-07,
+      1.818143042340335e-06,
+      -7.93325436258108e-06,
+      6.974698361947084e-08,
+      1.3566411714643772e-15,
+      4.207878343280146e-16,
+      2.674933803128139e-16,
+      1.082572333784206e-15,
+      -2.3783610650495836e-16,
+      -6.887527086127625e-17,
+      5.913540731296948e-16
+    ],
+    "gripper_position": [
+      0.4922425877974941,
+      0.35999999999999993
+    ],
+    "left_tcp": {
+      "position_m": [
+        0.367743186701193,
+        0.1291643845549378,
+        0.26398979156008595
+      ],
+      "quaternion_xyzw": [
+        -0.5011378249037122,
+        0.5028051745374875,
+        0.49932050825684166,
+        0.4967160828312614
+      ]
+    },
+    "right_tcp": {
+      "position_m": [
+        0.36003382228832664,
+        -0.3000058959469221,
+        0.24485500445050568
+      ],
+      "quaternion_xyzw": [
+        -0.4995021338302078,
+        0.4998512779507648,
+        0.5001983529778233,
+        0.5004477254502507
+      ]
+    },
+    "mode": "tracking",
+    "reason": "target accepted",
+    "cameras": [],
+    "schema_version": 3,
+    "gripper_states": [
+      {
+        "phase": "stalled",
+        "requested_open": 0,
+        "position_error": -0.4922425877974941,
+        "velocity_per_s": 0.0,
+        "width_m": null,
+        "force_n": null,
+        "enabled": null,
+        "timestamp_s": 414945.371614024
+      },
+      {
+        "phase": "idle",
+        "requested_open": null,
+        "position_error": null,
+        "velocity_per_s": 0.0,
+        "width_m": null,
+        "force_n": null,
+        "enabled": null,
+        "timestamp_s": 414945.371614024
+      }
+    ]
+  },
+  "api_calls": 7,
+  "api_cost_usd": 0.06926550000000001,
+  "evaluation": {
+    "success": true,
+    "final_retention_s": 32.60000000003002,
+    "longest_retention_s": 32.60000000003002,
+    "max_lift_m": 0.15218859454195027,
+    "robot_environment_collision_frames": 0,
+    "criterion": "lift >= 0.1 m, opposing fingers, no support, retain >= 10 s through final verification; no arm/environment collision"
+  }
+}

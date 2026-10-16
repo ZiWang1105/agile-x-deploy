@@ -1,0 +1,28 @@
+{
+  "model": "google/gemini-3.8-flash",
+  "id": "gen-1792113836-NEG00zNbcW9SUaUjv4AN",
+  "content": "{\"left\": {\"position_m\": [0.36802844515875305, 0.12907945020957645, 0.2794916812951666], \"quaternion_xyzw\": [-0.5009397512247715, 0.5014762055095232, 0.4996208642056466, 0.497955794223782], \"gripper_open\": 0}, \"right\": {\"position_m\": [0.3600353130600488, -0.3000252863895486, 0.25985499184344485], \"quaternion_xyzw\": [-0.4995021338302078, 0.4998512779507648, 0.5001983529778233, 0.5004477254502507], \"gripper_open\": null}, \"grounding\": null, \"duration_s\": 5.0, \"done\": true, \"decision_summary\": \"Hold red cube securely in the air to complete at least 10 seconds of holding.\"}",
+  "usage": {
+    "prompt_tokens": 13139,
+    "completion_tokens": 373,
+    "total_tokens": 13512,
+    "cost": 0.011253,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.011253,
+      "upstream_inference_prompt_cost": 0.00985425,
+      "upstream_inference_completions_cost": 0.00139875
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  }
+}

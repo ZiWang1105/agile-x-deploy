@@ -16,4 +16,4 @@ agilex-interactive = "agilex_deploy.interactive:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-agilex_deploy = ["calibration_ui.html"]
+agilex_deploy = ["calibration_ui.html", "agent_dashboard.html"]

@@ -4,6 +4,7 @@ The runtime thread is owned and joined by Robot.close(); no detached process
 or timer is used. Rendering cannot change actuator commands or step the plant.
 """
 from collections import OrderedDict
+from dataclasses import replace
 import threading
 import time
 
@@ -12,6 +13,7 @@ import numpy as np
 from .backends import Backend
 from .contract import Action, JOINT_NAMES, Observation
 from .controller import Controller
+from .gripper_tracking import GripperTracker
 from .model import CONTROL_DT, Kinematics
 
 FEEDBACK_MAX_AGE_S = .2
@@ -38,6 +40,7 @@ class Robot:
         self.last_sample = None
         self.last_sequence = -1
         self.errors = {}
+        self.gripper_trackers = (GripperTracker(), GripperTracker())
         sample = self._read()
         self.controller = Controller(self.kinematics, sample.positions, sample.grippers, ik=ik)
         # Official solver construction/warm-up can exceed the feedback lease.
@@ -73,6 +76,10 @@ class Robot:
         self.observation = Observation(self.observation_id, sample.timestamp_s, JOINT_NAMES,
             tuple(sample.positions), tuple(sample.velocities), tuple(sample.grippers),
             self.kinematics.pose("left"), self.kinematics.pose("right"), self.mode, self.reason)
+        self.observation = replace(self.observation, gripper_states=tuple(
+            tracker.observe(position, sample.timestamp_s, time.monotonic(), feedback,
+                            fault=self.mode == "fault")
+            for tracker, position, feedback in zip(self.gripper_trackers, sample.grippers, sample.gripper_feedback)))
         self.observations[self.observation_id] = self.observation
         while len(self.observations) > 64:
             self.observations.popitem(last=False)
@@ -105,6 +112,8 @@ class Robot:
                 self.goal_started = self.last_progress = now
                 self.best_error = float("inf")
             self.target = action
+            for side, tracker in zip(("left", "right"), self.gripper_trackers):
+                tracker.command(getattr(action, side).gripper_open, now)
             self.target_deadline = now + TARGET_LEASE_S
             self.mode, self.reason = "tracking", "target accepted"
             self.request_id += 1
@@ -112,6 +121,8 @@ class Robot:
 
     def _hold(self, reason, fault=False):
         self.target = None
+        for tracker in self.gripper_trackers:
+            tracker.hold()
         self.mode, self.reason = ("fault" if fault else "hold"), reason
         if self.last_sample is not None:
             self.controller.hold(self.last_sample.positions, self.last_sample.grippers)

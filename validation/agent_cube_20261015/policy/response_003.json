@@ -1,0 +1,28 @@
+{
+  "model": "google/gemini-3.8-flash",
+  "id": "gen-1792113814-fqCSs6Q5MVCEP5842h5U",
+  "content": "{\"left\": {\"position_m\": [0.368256, 0.128863, 0.124931], \"quaternion_xyzw\": [0.500358, -0.50005, -0.500019, -0.499574], \"gripper_open\": 0}, \"right\": {\"position_m\": [0.3600353130600488, -0.3000252863895486, 0.25985499184344485], \"quaternion_xyzw\": [-0.4995021338302078, 0.4998512779507648, 0.5001983529778233, 0.5004477254502507], \"gripper_open\": null}, \"grounding\": null, \"duration_s\": 1.5, \"done\": false, \"decision_summary\": \"Close left gripper to grasp the red cube.\"}",
+  "usage": {
+    "prompt_tokens": 11548,
+    "completion_tokens": 292,
+    "total_tokens": 11840,
+    "cost": 0.009756,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.009756,
+      "upstream_inference_prompt_cost": 0.008661,
+      "upstream_inference_completions_cost": 0.001095
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  }
+}

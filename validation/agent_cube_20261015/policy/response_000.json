@@ -1,0 +1,28 @@
+{
+  "model": "google/gemini-3.8-flash",
+  "id": "gen-1792113798-MkmLVVAiqWXMlPlRRxbD",
+  "content": "{\"left\": {\"position_m\": [0.3600354002737133, 0.30002537795664136, 0.2598549580364692], \"quaternion_xyzw\": [0.5004474511956791, -0.5001998432510123, -0.4998504849836684, -0.4995017097718514], \"gripper_open\": 1}, \"right\": {\"position_m\": [0.3600353130600488, -0.3000252863895486, 0.25985499184344485], \"quaternion_xyzw\": [-0.4995021338302078, 0.4998512779507648, 0.5001983529778233, 0.5004477254502507], \"gripper_open\": null}, \"grounding\": {\"arm\": \"left\", \"pixel_uv_1000\": [433, 205], \"offset_base_m\": [0.0, 0.0, 0.0], \"phase\": \"inspect\"}, \"duration_s\": 1.0, \"done\": false, \"decision_summary\": \"Inspect red cube surface and open left gripper.\"}",
+  "usage": {
+    "prompt_tokens": 9911,
+    "completion_tokens": 416,
+    "total_tokens": 10327,
+    "cost": 0.00899325,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.00899325,
+      "upstream_inference_prompt_cost": 0.00743325,
+      "upstream_inference_completions_cost": 0.00156
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  }
+}

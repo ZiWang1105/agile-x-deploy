@@ -74,6 +74,24 @@ class Action:
 
 
 @dataclass(frozen=True)
+class GripperState:
+    """Measured tracking outcome, not an object-contact or grasp-success claim.
+
+    Error and velocity use normalized configured travel. Force is the signed
+    vendor report in N, not a calibrated fingertip force. Missing sensors are
+    None, including force in the simulator's uncalibrated jaw model.
+    """
+    phase: str = "unavailable"
+    requested_open: int | None = None
+    position_error: float | None = None
+    velocity_per_s: float | None = None
+    width_m: float | None = None
+    force_n: float | None = None
+    enabled: bool | None = None
+    timestamp_s: float | None = None
+
+
+@dataclass(frozen=True)
 class Observation:
     observation_id: int
     timestamp_s: float  # Host monotonic acquisition time, not render or delivery time.
@@ -87,6 +105,7 @@ class Observation:
     reason: str
     cameras: tuple = ()  # Empty means unavailable; no synthetic RGB-D is returned.
     schema_version: int = 3
+    gripper_states: tuple[GripperState, GripperState] = (GripperState(), GripperState())
 
     def to_dict(self):
         return asdict(self)

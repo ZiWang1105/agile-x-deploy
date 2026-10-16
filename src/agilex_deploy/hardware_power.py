@@ -1,4 +1,4 @@
-"""Explicit motor disable for mechanically supported arms; never enables motors."""
+"""Disable supported arms, optionally opening both grippers with temporary arm holding."""
 import argparse
 from contextlib import ExitStack
 import fcntl
@@ -11,6 +11,7 @@ import time
 from .can_feedback import PassiveCanFeedback
 from .contract import SIDES
 from .model import ROOT
+from .gripper_open import open_with_arm_hold
 
 
 def disable_supported_arms(mapping=ROOT / "configs/hardware_mapping.json", *, arms_supported=False):
@@ -76,13 +77,18 @@ def main():
     parser.add_argument("--mapping", type=Path, default=ROOT / "configs/hardware_mapping.json")
     parser.add_argument("--arms-supported", action="store_true",
                         help="Confirm BOTH arms are mechanically supported against falling or swinging")
+    parser.add_argument("--open-grippers", action="store_true",
+                        help="Open both jaws with temporary measured-joint holding, then disable both arms")
     args = parser.parse_args()
     if not args.arms_supported:
         parser.error("Support BOTH arms first, then explicitly pass --arms-supported. Disabling releases motor holding torque.")
     try:
         result = disable_supported_arms(args.mapping, arms_supported=True)
+        if args.open_grippers:
+            print("Opening both jaws with temporary arm holding; keep both arms supported.", flush=True)
+            result["grippers"] = open_with_arm_hold(args.mapping, SIDES, arms_supported=True)
     except (RuntimeError, OSError, ValueError) as error:
-        parser.exit(1, f"Disable not confirmed: {error}\nKeep both arms supported.\n")
+        parser.exit(1, f"Requested operation not confirmed: {error}\nKeep both arms supported.\n")
     print("DISABLED confirmed: left 0/7 enabled; right 0/7 enabled.")
     print(json.dumps(result))
 

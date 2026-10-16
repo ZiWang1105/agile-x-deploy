@@ -1,0 +1,90 @@
+{
+  "date": "2026-10-15",
+  "sdk_commit": "d90e234ba8e408cfa964b38aa9120b3131fc9f85",
+  "full_suite_tests_passed": 93,
+  "focused_gripper_tests_passed_after_adding_viewer_key_test": 15,
+  "unique_tests_passed": 94,
+  "viewer_key_test": "left key 1 and right key 2 through the real IPC owner with a simulated plant; HOLD on Space",
+  "physical_open_close_tested": false,
+  "motion_commands_sent_during_hardware_inspection": 0,
+  "unarmed_transport": {
+    "left": {
+      "startup": "passed_unarmed",
+      "normalized_travel": [
+        0.0,
+        null
+      ],
+      "range_m": 0.1,
+      "armed": false,
+      "writer_open": false
+    },
+    "right": {
+      "startup": "passed_unarmed",
+      "normalized_travel": [
+        null,
+        0.00895
+      ],
+      "range_m": 0.1,
+      "armed": false,
+      "writer_open": false
+    }
+  },
+  "connection_inspection": {
+    "channels": {
+      "left": "can1",
+      "right": "can0"
+    },
+    "motion_commands_sent": 0,
+    "grippers": {
+      "left": {
+        "width_m": 0.0,
+        "force_n": 0.0,
+        "status": 0,
+        "timestamp_s": 411218.0204758644,
+        "enabled": false,
+        "zeroed": false,
+        "driver_fault_bits": 0,
+        "configured_max_width_m": 0.1,
+        "normalized_travel": 0.0
+      },
+      "right": {
+        "width_m": 0.000895,
+        "force_n": 0.0,
+        "status": 0,
+        "timestamp_s": 411218.01669597626,
+        "enabled": false,
+        "zeroed": false,
+        "driver_fault_bits": 0,
+        "configured_max_width_m": 0.1,
+        "normalized_travel": 0.00895
+      }
+    }
+  },
+  "limitations": [
+    "Controller range normalization does not independently establish physical zero or stroke.",
+    "Controller-forwarded feedback does not verify the physical gripper node ID.",
+    "Physical following and failure-stop behavior remain unqualified."
+  ],
+  "feedback_supervision_validation": {
+    "date": "2026-10-15",
+    "control_path": "Official AgileX width/force commands with shared measured-feedback tracking; no host effort regulator",
+    "full_suite_tests_passed": 102,
+    "full_suite_duration_s": 129.512,
+    "focused_gripper_tests_passed": 23,
+    "native_viewer": "commissioning-sim, left gripper enabled as a capability, unarmed startup and 3-second clean shutdown",
+    "native_viewer_feedback_records": 15,
+    "native_viewer_final_gripper_phases": [
+      "idle",
+      "unavailable"
+    ],
+    "motion_validation": "Offline simulated plant plus real IPC viewer-key tests; no physical motion",
+    "hardware_motion_commands_sent": 0,
+    "physical_force_regulation_validated": false,
+    "logs": [
+      "logs/grippers/feedback_tests.log",
+      "logs/grippers/feedback_full_suite.log",
+      "logs/grippers/feedback_viewer.log",
+      "logs/grippers/feedback_viewer.jsonl"
+    ]
+  }
+}

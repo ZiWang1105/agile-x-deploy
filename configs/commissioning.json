@@ -42,9 +42,18 @@
   "independent_watchdog_and_hold_qualified": false,
   "viewer_watchdog_process_tested_in_simulation": true,
   "real_transport_unarmed_feedback_tested": true,
-  "single_arm_commissioning_implementation": "Explicit operator arming; full workspace by default; selected-controller joint limits; grippers unavailable; physical following and failure-stop behavior not qualified",
+  "single_arm_commissioning_implementation": "Explicit operator arming; full workspace by default; selected-controller joint limits; optional selected-gripper width control using official codec; physical following and failure-stop behavior not qualified",
   "physical_motion_tested": true,
   "automatic_hardware_enable": false,
   "note": "Commissioning evidence only. This file does not authorize motion or bypass runtime checks. Firmware observations must be refreshed after controller updates.",
-  "physical_motion_evidence": "Operator sessions enabled and moved the left arm. A later session faulted with CAN ENOBUFS. Physical tracking after the queue-handling fix has not been tested; this is not stop or dynamics qualification."
+  "physical_motion_evidence": "Operator sessions enabled and moved the left arm. A later session faulted with CAN ENOBUFS. Physical tracking after the queue-handling fix has not been tested; this is not stop or dynamics qualification.",
+  "gripper_control": {
+    "optional": true,
+    "sdk_commit": "d90e234ba8e408cfa964b38aa9120b3131fc9f85",
+    "left_range_readback_m": 0.1,
+    "right_range_readback_m": 0.1,
+    "physical_open_close_tested": false,
+    "physical_zero_verified": false,
+    "automatic_zeroing": false
+  }
 }

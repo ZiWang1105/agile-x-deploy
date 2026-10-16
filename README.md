@@ -1,6 +1,61 @@
-# NERO dual-arm interactive IK
+# Dual NERO control and agentic manipulation
 
 This workspace assembles the supplied dual-NERO stand and runs **AgileX's official QuestArmTeleop `ArmIK` solver with NERO defaults and an explicit `w_pos=40, w_ori=4` override**. Simulation and the explicitly armed single-arm hardware adapter share the same solver, TCP definition and robot interface. The official IK path has been tested in simulation; physical motion with this solver has not been tested. Earlier left-arm hardware motion used the previous local Jacobian solver. See [official IK provenance and validation](docs/OFFICIAL_IK.md).
+
+## Agentic cube pickup
+
+The OpenRouter policy now picks up a free cube using rendered RGB-D, measured
+robot state, model-selected pixel grounding, official NERO IK, and physical
+finger contacts. The final seven-call run lifted the cube **152.2 mm** and retained
+it for **32.6 seconds**, with no arm/environment collisions. The policy received
+no simulator object coordinates or contact truth. The same policy and sensor/
+action contract are wired to the real NERO/ZED adapter.
+
+[Watch the complete 59-second validation video](previews/agent_cube_pickup.mp4).
+[Validation report](previews/agent_policy_validation.json) ·
+[Archived sensor/API evidence](validation/agent_cube_20261015) ·
+[Setup, architecture and physical deployment](docs/AGENT_POLICY.md).
+
+```bash
+uv pip install --python .venv-official/bin/python -r requirements-agent.txt
+./scripts/run_agent.sh --backend sim --max-calls 16 --video \
+  --prompt 'Pick up the red cube, lift it at least 10 cm, and hold it for at least 10 seconds.'
+./scripts/run_agent.sh --backend real --side left  # Read-only RGB-D/robot preflight.
+```
+
+Open **http://127.0.0.1:8770**, edit the task, and click **Start simulation**.
+The live dashboard shows the simulator, the fixed head-camera view, the latest
+policy input image, decisions, execution feedback, and results. **Stop / HOLD**
+ends policy commands, including decisions that return after Stop. **Close session**
+exits after cleanup. Use `--no-web` to run immediately without the dashboard.
+The physical preflight command is a separate session; close the simulator first
+or choose another `--port`.
+
+For the **real robot dashboard**, close any existing agent session, then run:
+
+```bash
+./scripts/run_agent.sh --backend real --side left --execute-real --camera-serial 35330610 \
+  --prompt 'Pick up the cube using the left arm and hold it above the table.'
+```
+
+At **http://127.0.0.1:8770**, the **PHYSICAL ROBOT** page streams the real ZED and
+measured arm/gripper feedback. It stays unarmed until **Start real policy** is
+clicked. That button enables the selected physical arm and runs the task.
+Camera selection verifies the
+serial directly on the video device; the live panel displays its serial and path. Its calibration remains a
+candidate; autonomous physical pickup has not been validated.
+
+The external key defaults to `~/projects/openrouter_key.txt`. The full suite
+passed 120 tests, including dashboard authentication, cancellation, camera identity,
+and the combined gripper-opening command. Physical read-only preflight passed; autonomous physical
+grasping has not been executed. The physical owner still controls one selected
+arm per session, and camera/tool calibration remains provisional.
+
+The policy uses only one stand-mounted head RGB-D view (ZED 2i on hardware),
+with no wrist cameras. `--prompt` / `--instruction` supplies the task. The agent
+scene now removes the source URDF's wrist-camera assemblies; the archived video
+and pickup metrics above predate this geometry correction. Those CAD parts were
+never additional policy camera feeds.
 
 ## Historical demo (previous IK)
 
@@ -152,7 +207,20 @@ The October 14 left-arm readback was `[3.14, 3.14, 3.14, 3.14, 3.92, 3.92, 3.92]
 
 Torque/current protection remains in the firmware, unchanged by this host. A numeric hardware torque ceiling has not been verified: URDF effort `100` and MIT torque encoding `±16 Nm` are not evidence of a safe joint torque limit. The simulator's force range is not a validated hardware torque model. See [limit provenance](docs/HARDWARE_COMMISSIONING.md#motion-limit-sources).
 
-**G** requests a fixed nominal-TCP target 30 mm above the arming pose; repeated presses do not accumulate movement. Grippers are not enabled or commanded. An optional legacy envelope remains available only with explicit `--workspace bounded`; it is never selected by default.
+**G** requests a fixed nominal-TCP target 30 mm above the arming pose; repeated presses do not accumulate movement. Grippers are not enabled or commanded by default. Add `--gripper` to expose selected-side feedback and explicit open/close keys; **E** and pose dragging alone still send no gripper commands. See [gripper control](docs/GRIPPER_CONTROL.md). An optional legacy envelope remains available only with explicit `--workspace bounded`; it is never selected by default.
+
+To open both physical jaws and finish with both arms disabled, close active
+controllers, mechanically support both arms, and run:
+
+```bash
+.venv-official/bin/python -m agilex_deploy.hardware_power --arms-supported --open-grippers
+```
+
+This temporarily holds each arm at its measured joint positions while opening
+its jaw, verifies opening from feedback, then disables the arm again.
+Omit `--open-grippers` for disable-only behavior.
+
+Gripper motion uses AgileX's official width/force command path. The shared `Observation.gripper_states` reports measured endpoint progress, stationary shortfall, and available width/force/status feedback; the viewer displays those states. A `stalled` report is not a confirmed grasp and does not alter the firmware target. This is feedback supervision, not a port of Hexfellow's host-side motor-effort regulator. The simulator reports force as unavailable, and physical force behavior remains untested.
 
 **Space/R** requests servo HOLD. **Q/window close requests HOLD and leaves motors enabled**; it does not release the arm or guarantee physical emergency stopping. A CAN or power failure can prevent HOLD. Full-range physical following and failure-stop behavior remain unqualified. Use `--side right` for a separate right-arm session; simultaneous dual-arm physical control is deliberately not exposed yet.
 
@@ -174,7 +242,7 @@ robot.hold()
 robot.close()
 ```
 
-`Action` always contains both arms: a base-frame TCP position in meters, an XYZW unit quaternion, and integer `gripper_open` (0 or 1) per arm. `Observation` contains the 14 named arm encoders, measured velocities, normalized gripper travel, encoder-derived TCPs, acquisition timestamp, observation ID, and runtime state. Camera observations are explicitly unavailable in this release.
+`Action` always contains both arms: a base-frame TCP position in meters, an XYZW unit quaternion, and `gripper_open` (integer 0/1, or null to leave unchanged) per arm. `Observation` contains the 14 named arm encoders, measured velocities, normalized gripper travel, encoder-derived TCPs, acquisition timestamp, observation ID, and runtime state. Camera observations are explicitly unavailable in this release.
 
 `Robot(SimBackend())` and `Robot(RealBackend(transport))` run the exact same contract, IK, target admission, and joint-reference controller. A policy or viewer receives `RobotInterface`; it does not branch on the backend. Only the composition root selects the backend. See [the architecture and commissioning boundary](docs/INTERACTIVE_IK.md) and [a minimal agent-style policy](examples/agent_policy.py).
 
@@ -187,6 +255,8 @@ The controller loads the unmodified official `ArmIK` class (Pinocchio + CasADi +
 The simulator uses ideal gravity compensation. **Contacts and collision admission are not implemented.** It is suitable for free-space interactive IK, not grasp/contact validation or hardware execution. Source inertias and limits are unqualified. The TCP follows the official NERO `ee`: `[0.1755, 0, -0.0235]` meters with zero RPY relative to each `joint7` child frame. Observation schema version 3 identifies this change from the previous TCP. Recreate targets from fresh observations; do not replay old TCP targets. This is a nominal official definition, not a measured tool calibration. Top-camera orientation is preserved, and its bracket joint is fixed in the runtime model.
 
 ```bash
+./scripts/setup_camera_calibration.sh  # Image-processing dependency for calibration tests.
+./scripts/setup_gripper.sh             # Pinned official gripper codec for protocol tests.
 .venv-official/bin/python -m unittest discover -s tests -v
 MUJOCO_GL=egl .venv-official/bin/python scripts/smoke_ik.py
 .venv-official/bin/python scripts/validate_assembly.py
