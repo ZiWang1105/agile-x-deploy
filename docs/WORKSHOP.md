@@ -245,6 +245,6 @@ model run used 34 model calls. Baseline sorting uses both arms sequentially;
 it does not demonstrate a simultaneous two-object grasp.
 
 See [validation summary](../previews/workshop_validation.json),
-[placement video](../previews/workshop_place.mp4),
-[dual-arm sorting video](../previews/workshop_sort.mp4), and
+[placement GIF](../previews/workshop_place.gif),
+[dual-arm sorting GIF](../previews/workshop_sort.gif), and
 [dashboard screenshot](../previews/workshop_dashboard.png).
