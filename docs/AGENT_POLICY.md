@@ -97,17 +97,22 @@ The simulator starts from a generic raised posture, not a scripted approach.
   A 120-second idle policy-session lease prevents indefinite abandoned execution.
 
 Simulator and hardware have identical packet fields and action semantics.
-Capabilities are explicit: simulation exposes both arms, while the existing
-physical commissioning owner exposes **one selected arm per session**. The policy
-receives `available_arms`, and attempts to move an unavailable arm are rejected.
-This release does not add simultaneous dual-arm physical operation.
+Both simulation and hardware expose **both arms in one session** with
+`--side both` (the default). `--side left` or `--side right` restricts the policy
+on either backend. The policy receives `available_arms`, and attempts to command
+an unavailable arm are rejected. A shared action contains both arm poses and
+independent gripper targets. One physical control owner validates both targets
+before dispatch and requests HOLD on both arms if either side faults.
+The two CAN adapters are written sequentially within a control tick; this is
+coordinated control, not hardware-triggered synchronization. Paired physical
+motion still requires measured qualification; this change was tested offline.
 
 ## Physical deployment
 
 First run the non-actuating preflight:
 
 ```bash
-./scripts/run_agent.sh --backend real --side left
+./scripts/run_agent.sh --backend real --side both
 ```
 
 It starts the existing unarmed hardware owner, captures robot feedback and ZED
@@ -119,13 +124,13 @@ existing disabled-arm startup state. It makes no model API calls.
 To prepare the real policy dashboard (the arm remains unarmed until Start):
 
 ```bash
-./scripts/run_agent.sh --backend real --side left --execute-real \
+./scripts/run_agent.sh --backend real --side both --execute-real \
   --instruction 'Pick up the cube with the available arm and hold it above the table.'
 ```
 
 Open **http://127.0.0.1:8770**, confirm the badge says **PHYSICAL ROBOT**, review
 the live ZED image and measured feedback, edit the prompt, then click
-**Start real policy**. This enables the selected arm at its measured starting
+**Start real policy**. This enables the selected arms at their measured starting
 posture after reacquiring fresh RGB-D/feedback. Start cancellation and stale
 camera failures prevent enable. Use `--side right` for the other arm. The launcher
 uses the existing official NERO joint-position/IK path and official gripper

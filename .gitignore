@@ -12,3 +12,9 @@ previews/decoded_*.png
 previews/video_check_*.png
 
 .venv-camera/
+
+# Keep local API credentials out of version control.
+openrouter_key.txt
+.env
+.env.*
+!.env.example

@@ -43,7 +43,7 @@ def main():
     parser.add_argument(
         "--port", type=int, default=8770, help="Local dashboard port (default: 8770)"
     )
-    parser.add_argument("--side", choices=["left", "right"], default="left")
+    parser.add_argument("--side", choices=["left", "right", "both"], default="both")
     parser.add_argument(
         "--camera-serial",
         help="Require this ZED video serial; defaults to the calibration file's serial",
@@ -120,13 +120,13 @@ def main():
                 dashboard.watch_sim(robot, plant)
                 # No control thread or simulated time advances while awaiting Start.
                 args.instruction = dashboard.wait_start()
-            available = ("left", "right")
+            available = ("left", "right") if args.side == "both" else (args.side,)
         else:
             from agilex_deploy.agent_zed import ZedStereoCamera
             from agilex_deploy.hardware_session import HardwareSession
 
             robot = HardwareSession(args.side, gripper_control=True)
-            available = (args.side,)
+            available = ("left", "right") if args.side == "both" else (args.side,)
             # All hardware IPC, including live monitoring before enable, shares one lock.
             executor = AgentExecutor(robot, available)
             camera = ZedStereoCamera(
@@ -175,7 +175,7 @@ def main():
                 dashboard.update(
                     phase="arming",
                     can_start=False,
-                    message=f"Enabling {args.side} arm at its measured posture…",
+                    message=f"Enabling {args.side} arm(s) at measured postures…",
                 )
             executor.arm()
         if executor is None:

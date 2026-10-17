@@ -1,0 +1,3 @@
+# Install after the robot, official IK, gripper, and camera dependencies.
+# v1 supports the robot's Python 3.10 environment; protocol integration is tested.
+mcp==1.30.0

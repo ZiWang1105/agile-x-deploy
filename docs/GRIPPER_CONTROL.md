@@ -2,9 +2,13 @@
 
 The shared `Action` keeps the existing `gripper_open` convention: integer `0`
 closes, integer `1` opens, and `None` leaves the gripper target unchanged. Physical
-control is optional and selected per arm, matching the current single-arm NERO
-commissioning session. The other arm and gripper cannot be commanded by that
-session. Standalone simulation continues to control both grippers.
+control is optional. A `--side both --gripper` session controls both arms and
+independently commands both grippers. Single-arm selection remains available.
+Each physical gripper uses its own controller-reported range and feedback. Commands are
+independent: changing the left jaw leaves the right target unchanged, and vice
+versa. In both simulation and hardware viewers, startup/reset sets both jaw
+targets to `None`; dragging an arm or pressing one gripper key does not round the
+other jaw's measured opening into an implicit open/close command.
 
 ## Install and inspect
 
@@ -53,26 +57,26 @@ Start with supported, stationary arms disabled, as required by the existing
 commissioning workflow. Keep the jaws clear before issuing an open/close target.
 
 ```bash
-./scripts/run_interactive.sh --backend real-commissioning --side left --gripper
+./scripts/run_interactive.sh --backend real-commissioning --side both --gripper
 ```
 
-1. Press **E** to enable the selected arm at its current posture. This sends no
+1. Press **E** to enable the selected arms at their measured postures. This sends no
    gripper command.
-2. Press **1** to toggle the left gripper. Its first explicit target also enables
+2. Press **1** to toggle the left gripper or **2** for the right gripper. Its first explicit target also enables
    the gripper. Pose dragging alone never enables or commands it.
 3. Press **Space** or **R** to discard the target and request HOLD at measured
    joint and gripper positions. **Q** requests HOLD and closes the session;
    enabled motors remain enabled.
 
-For the right side, use `--side right --gripper` and press **2**. Close the previous
-owner before starting another session; the existing paired ownership lock and
-disabled-arm startup requirement still apply. This does not introduce concurrent
-dual-arm physical control. Avoid disabling unsupported arms when switching.
+Use `--side left` or `--side right` when only one arm should be controlled.
+Close any previous owner before starting a new session. One pair-wide lock and
+one paired feedback reader serve both CAN writers; both arms must initially be
+disabled. A fault or heartbeat expiry on either side requests HOLD for both.
 
 Exercise the same selected-side interface without hardware:
 
 ```bash
-./scripts/run_interactive.sh --backend commissioning-sim --side left --gripper
+./scripts/run_interactive.sh --backend commissioning-sim --side both --gripper
 ```
 
 The force command defaults to `1.0`, matching the official `move_gripper_m` API;
@@ -197,3 +201,9 @@ unarmed startup/shutdown and logged 15 observations with the new fields. Viewer
 key routing still passes through the actual IPC owner with a simulated plant.
 These checks sent no hardware motion commands and do not validate physical
 gripping force or object retention.
+
+Independent-control regression checks on 2026-10-16 passed 29 focused tests.
+They include left-only/right-only CAN routing, sequential open/close operations
+through the simulated hardware owner with the other jaw and arm joints unchanged,
+and standalone simulation's first gripper key leaving the other jaw unchanged.
+No physical motion was issued for these checks.

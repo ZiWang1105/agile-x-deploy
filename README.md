@@ -1,6 +1,35 @@
 # Dual NERO control and agentic manipulation
 
-This workspace assembles the supplied dual-NERO stand and runs **AgileX's official QuestArmTeleop `ArmIK` solver with NERO defaults and an explicit `w_pos=40, w_ori=4` override**. Simulation and the explicitly armed single-arm hardware adapter share the same solver, TCP definition and robot interface. The official IK path has been tested in simulation; physical motion with this solver has not been tested. Earlier left-arm hardware motion used the previous local Jacobian solver. See [official IK provenance and validation](docs/OFFICIAL_IK.md).
+This workspace assembles the supplied dual-NERO stand and runs **AgileX's official QuestArmTeleop `ArmIK` solver with NERO defaults and an explicit `w_pos=40, w_ori=4` override**. Simulation and the explicitly armed single- or dual-arm hardware adapter share the same solver, TCP definition and robot interface. The official IK path has been tested in simulation; physical motion with this solver has not been tested. Earlier left-arm hardware motion used the previous local Jacobian solver. See [official IK provenance and validation](docs/OFFICIAL_IK.md).
+
+## Workshop API: Python and MCP
+
+Participants can use the same **Python SDK or 18 MCP tools** for simulation and
+physical deployment: official IK/FK, head RGB-D, joint/TCP motion, both arms,
+**independent left/right grippers**, operation feedback, and cancellation.
+
+```bash
+uv pip install --python .venv-official/bin/python -r requirements-workshop.txt
+./scripts/run_workshop.sh --backend sim --task place --auto-start-sim
+# Second terminal:
+.venv-official/bin/python examples/workshop/code_policy.py --config logs/workshop/client.json
+```
+
+Open **http://127.0.0.1:8780**. Tasks: `place`, `select`, and `sort`.
+[Workshop plan, participant API, MCP setup, and physical rollout](docs/WORKSHOP.md).
+
+The simulator passed placement, distractor-preserving selection, and two-arm
+sorting with the RGB-D baseline. A live model-driven MCP policy also placed the
+cube, lifting it **121.4 mm** before release. The full regression suite passed
+**143 tests**. The real adapter is implemented; physical workshop tasks and
+camera/tool calibration still require qualification. No real motion was run
+for this validation.
+
+[Placement video](previews/workshop_place.mp4) ·
+[Two-arm sorting video](previews/workshop_sort.mp4) ·
+[Validation results](previews/workshop_validation.json)
+
+![Workshop dashboard with head camera, simulator view, independent arm/gripper feedback, and operation events](previews/workshop_dashboard.png)
 
 ## Agentic cube pickup
 
@@ -20,7 +49,7 @@ action contract are wired to the real NERO/ZED adapter.
 uv pip install --python .venv-official/bin/python -r requirements-agent.txt
 ./scripts/run_agent.sh --backend sim --max-calls 16 --video \
   --prompt 'Pick up the red cube, lift it at least 10 cm, and hold it for at least 10 seconds.'
-./scripts/run_agent.sh --backend real --side left  # Read-only RGB-D/robot preflight.
+./scripts/run_agent.sh --backend real --side both  # Read-only RGB-D/robot preflight.
 ```
 
 Open **http://127.0.0.1:8770**, edit the task, and click **Start simulation**.
@@ -34,7 +63,7 @@ or choose another `--port`.
 For the **real robot dashboard**, close any existing agent session, then run:
 
 ```bash
-./scripts/run_agent.sh --backend real --side left --execute-real --camera-serial 35330610 \
+./scripts/run_agent.sh --backend real --side both --execute-real --camera-serial 35330610 \
   --prompt 'Pick up the cube using the left arm and hold it above the table.'
 ```
 
@@ -46,10 +75,10 @@ serial directly on the video device; the live panel displays its serial and path
 candidate; autonomous physical pickup has not been validated.
 
 The external key defaults to `~/projects/openrouter_key.txt`. The full suite
-passed 120 tests, including dashboard authentication, cancellation, camera identity,
-and the combined gripper-opening command. Physical read-only preflight passed; autonomous physical
-grasping has not been executed. The physical owner still controls one selected
-arm per session, and camera/tool calibration remains provisional.
+passed 130 tests, including dashboard authentication, cancellation, camera identity,
+paired arm/gripper control, and the combined gripper-opening command. Physical read-only preflight passed; autonomous physical
+grasping has not been executed. The physical owner supports both arms in one session; camera/tool calibration
+remains provisional. Paired physical motion has not yet been qualified.
 
 The policy uses only one stand-mounted head RGB-D view (ZED 2i on hardware),
 with no wrist cameras. `--prompt` / `--instruction` supplies the task. The agent
@@ -196,10 +225,10 @@ See [hardware commissioning](docs/HARDWARE_COMMISSIONING.md) for the remaining s
 For full-workspace mouse control, start with both arms supported and disabled, clear the arm's movement area, then run:
 
 ```bash
-DISPLAY=:1 ./scripts/run_interactive.sh --backend real-commissioning --side left --workspace full
+DISPLAY=:1 ./scripts/run_interactive.sh --backend real-commissioning --side both --workspace full --gripper
 ```
 
-This starts **UNARMED**. E enables the selected arm holding its current posture. Double-click its red sphere, Ctrl+right-drag to translate, and Ctrl+left-drag to rotate. Full mode removes the radius, height floor, orientation cap and joint excursion cap relative to the arming pose. Full workspace is now the default. Joint position limits, live controller speed/acceleration limits, one-arm ownership and communication watchdogs remain. The old 0.03 rad/s, 0.1 rad/s², 5% firmware speed and arbitrary tracking-error caps are removed. It is not a collision-aware planner: the table, stand, opposite arm and other obstacles are not protected. An IK target may be unreachable even though the handle can be dragged there. Space requests HOLD; Q closes the controller and leaves motors enabled. To use the identical full-workspace controls without hardware access, replace `real-commissioning` with `commissioning-sim`.
+This starts **UNARMED**. E enables both selected arms holding their current postures. Double-click either red sphere, Ctrl+right-drag to translate, and Ctrl+left-drag to rotate. Full mode removes the radius, height floor, orientation cap and joint excursion cap relative to the arming pose. Full workspace is now the default. Joint position limits, live controller speed/acceleration limits, pair-wide ownership and communication watchdogs remain. The old 0.03 rad/s, 0.1 rad/s², 5% firmware speed and arbitrary tracking-error caps are removed. It is not a collision-aware planner: the table, stand, opposite arm and other obstacles are not protected. An IK target may be unreachable even though the handle can be dragged there. Space requests HOLD; Q closes the controller and leaves motors enabled. To use the identical full-workspace controls without hardware access, replace `real-commissioning` with `commissioning-sim`.
 
 On **E**, the transport selects CAN joint-position mode at **100% of the controller's configured speed**, reads that selected controller's seven position/speed/acceleration limits while disabled, seeds current angles, then enables its joints. Incomplete readback prevents enable; settings from the other arm are never substituted. The speed reference respects the lower of the manual maximum and controller readback. Joint position bounds use the intersection of the supplied URDF and controller settings, without additional margins.
 
@@ -222,12 +251,12 @@ Omit `--open-grippers` for disable-only behavior.
 
 Gripper motion uses AgileX's official width/force command path. The shared `Observation.gripper_states` reports measured endpoint progress, stationary shortfall, and available width/force/status feedback; the viewer displays those states. A `stalled` report is not a confirmed grasp and does not alter the firmware target. This is feedback supervision, not a port of Hexfellow's host-side motor-effort regulator. The simulator reports force as unavailable, and physical force behavior remains untested.
 
-**Space/R** requests servo HOLD. **Q/window close requests HOLD and leaves motors enabled**; it does not release the arm or guarantee physical emergency stopping. A CAN or power failure can prevent HOLD. Full-range physical following and failure-stop behavior remain unqualified. Use `--side right` for a separate right-arm session; simultaneous dual-arm physical control is deliberately not exposed yet.
+**Space/R** requests servo HOLD. **Q/window close requests HOLD and leaves motors enabled**; it does not release the arm or guarantee physical emergency stopping. A CAN or power failure can prevent HOLD. Full-range physical following and failure-stop behavior remain unqualified. Use `--side both` (the default) to control both arms and both grippers in one owned session; `--side left` and `--side right` retain single-arm selection. Both buses share admission, watchdog, and fault handling. A fault on either side requests HOLD on both.
 
 Practice the identical arming/UI workflow without opening CAN:
 
 ```bash
-DISPLAY=:1 ./scripts/run_interactive.sh --backend commissioning-sim --side left
+DISPLAY=:1 ./scripts/run_interactive.sh --backend commissioning-sim --side both --gripper
 .venv-official/bin/python scripts/check_real_session.py  # Reads real feedback; never arms.
 ```
 

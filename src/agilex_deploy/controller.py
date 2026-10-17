@@ -7,7 +7,7 @@ stopping, torque, contact dynamics or collision clearance.
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from .contract import SIDES
+from .contract import SIDES, JointAction
 from .model import CONTROL_DT
 from .official_ik import OfficialDualIK
 
@@ -65,9 +65,10 @@ class Controller:
             target = getattr(action, side).pose
             # An unchanged HOLD target must not move an inactive arm merely
             # because the official objective includes neutral-pose regularization.
-            if target == self.hold_poses[side]:
+            if target == self.hold_poses[side] and not isinstance(action, JointAction):
                 continue
-            goal = self.ik.solve(side, target, q[indices])
+            goal = (np.asarray(action.joint_positions_rad)[indices] if isinstance(action, JointAction)
+                    else self.ik.solve(side, target, q[indices]))
             delta = goal - self.reference[indices]
             # Decelerate toward the official joint solution. This is execution
             # timing, not an extra pose objective or a replacement IK solver.

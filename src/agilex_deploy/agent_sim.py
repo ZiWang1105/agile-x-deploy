@@ -20,7 +20,7 @@ from .model import MODEL_PATH, load_model
 
 
 def make_scene(scene_path):
-    scene = json.loads(Path(scene_path).read_text())
+    scene = scene_path if isinstance(scene_path, dict) else json.loads(Path(scene_path).read_text())
     visual_model = load_model()
     planar = set()
     for index in range(visual_model.nmesh):
@@ -92,25 +92,40 @@ def make_scene(scene_path):
         conaffinity="3",
         friction=".8 .005 .0001",
     )
-    cube = scene["cube"]
-    body = ET.SubElement(
-        world, "body", name="task_cube", pos=" ".join(map(str, cube["position_m"]))
-    )
-    ET.SubElement(body, "freejoint", name="cube_free")
-    ET.SubElement(
-        body,
-        "geom",
-        name="cube",
-        type="box",
-        size=" ".join([str(cube["half_size_m"])] * 3),
-        mass=str(cube["mass_kg"]),
-        rgba=".9 .12 .04 1",
-        friction="1 .01 .001",
-        contype="1",
-        conaffinity="3",
-        condim="4",
-        solref=".008 1",
-    )
+    for cube in scene.get("objects", [scene.get("cube")]):
+        body = ET.SubElement(
+            world, "body", name=cube.get("body_name", "task_cube"), pos=" ".join(map(str, cube["position_m"]))
+        )
+        ET.SubElement(body, "freejoint", name=cube.get("name", "cube") + "_free")
+        ET.SubElement(
+            body,
+            "geom",
+            name=cube.get("name", "cube"),
+            type="box",
+            size=" ".join([str(cube["half_size_m"])] * 3),
+            mass=str(cube["mass_kg"]),
+            rgba=" ".join(map(str, cube.get("rgba", [.9, .12, .04, 1]))),
+            friction="1 .01 .001",
+            contype="1",
+            conaffinity="3",
+            condim="4",
+            solref=".008 1",
+        )
+    for tray in scene.get("trays", []):
+        x, y, z = tray["center_m"]
+        hx, hy = tray["half_size_xy_m"]
+        rgba = " ".join(map(str, tray["rgba"]))
+        for suffix, pos, size in (
+            ("floor", [x, y, z], [hx, hy, .003]),
+            ("front", [x+hx, y, z+.008], [.003, hy, .008]),
+            ("back", [x-hx, y, z+.008], [.003, hy, .008]),
+            ("left", [x, y+hy, z+.008], [hx, .003, .008]),
+            ("right", [x, y-hy, z+.008], [hx, .003, .008]),
+        ):
+            ET.SubElement(world, "geom", name=f"{tray['name']}_{suffix}",
+                          type="box", pos=" ".join(map(str, pos)),
+                          size=" ".join(map(str, size)), rgba=rgba,
+                          contype="1", conaffinity="3", friction=".8 .005 .0001")
     t = transform(scene["camera"]["T_base_from_optical"])
     # MuJoCo camera looks along -Z, image up +Y; RGB-D contract uses optical +Z/+Y down.
     rotation = t[:3, :3] @ np.diag([1, -1, -1])

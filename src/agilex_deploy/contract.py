@@ -74,6 +74,17 @@ class Action:
 
 
 @dataclass(frozen=True)
+class JointAction(Action):
+    """Explicit joint target with its FK poses; executed without an IK round trip."""
+    joint_positions_rad: tuple[float, ...]
+
+    def __post_init__(self):
+        super().__post_init__()
+        object.__setattr__(self, "joint_positions_rad",
+                           finite_tuple(self.joint_positions_rad, 14, "joint_positions_rad"))
+
+
+@dataclass(frozen=True)
 class GripperState:
     """Measured tracking outcome, not an object-contact or grasp-success claim.
 

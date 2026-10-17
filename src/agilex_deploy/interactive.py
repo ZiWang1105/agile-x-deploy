@@ -134,6 +134,10 @@ def constrain_commissioning_drag(action, lift_target, side, workspace_radius_m=M
     permits translation and rotation without an arming-relative envelope.
     The transport still independently validates every submitted target.
     """
+    if side == "both":
+        constrained = [constrain_commissioning_drag(action, lift_target, s, workspace_radius_m) for s in SIDES]
+        result = Action(*(getattr(constrained[i][0], s) for i, s in enumerate(SIDES)))
+        return result, result != action
     if workspace_radius_m is None:
         arms = {s: getattr(lift_target, s) for s in SIDES}
         arms[side] = getattr(action, side)
@@ -167,14 +171,12 @@ def configure_handles(kin, sides):
 
 
 def viewer_targets(observed, hardware_control=False):
-    """Hardware pose drags must not round measured jaw travel into open/close."""
-    if hardware_control:
-        return Action(*(ArmTarget(getattr(observed, f"{s}_tcp"), None) for s in SIDES))
-    return observed.as_action()
+    """Pose drags and resets must not issue implicit jaw targets on either backend."""
+    return Action(*(ArmTarget(getattr(observed, f"{s}_tcp"), None) for s in SIDES))
 
 
 def toggle_gripper(targets, observed, side, selected_side=None):
-    if selected_side is not None and side != selected_side:
+    if selected_side not in (None, "both") and side != selected_side:
         raise ValueError("Only the selected arm's gripper is controllable in this session")
     measured = observed.gripper_position[SIDES.index(side)]
     if measured is None:
@@ -210,7 +212,7 @@ def run_viewer(robot: RobotInterface, duration=None, log_path=None, on_ready=Non
     if feedback is not None:
         hardware_snapshot = feedback.read(timeout=1.)
         update_mirror(kin, hardware_snapshot)
-    draggable_sides = (robot.side,) if hardware_control else SIDES
+    draggable_sides = (SIDES if robot.side == "both" else (robot.side,)) if hardware_control else SIDES
     workspace_radius_m = robot.workspace_radius_m if hardware_control else MAX_TRANSLATION_M
     workspace_label = "FULL WORKSPACE" if workspace_radius_m is None else f"{workspace_radius_m * 100:g} cm radius"
     selected_ids = configure_handles(kin, draggable_sides)
@@ -398,29 +400,31 @@ def run_viewer(robot: RobotInterface, duration=None, log_path=None, on_ready=Non
                         text += "\nFROZEN hardware display: " + hardware_fault
                     footer = "Space / R: stop SIM preview | M: show/hide preview | Q: quit\nNo collision admission; mount/signs/TCP not yet physically verified"
                 if hardware_control:
-                    title = f"NERO {'TEST SIMULATION' if robot.simulation else 'PHYSICAL ROBOT'} | {robot.side.upper()} ARM | {workspace_label}"
-                    text += "\nE: ENABLE selected arm at current pose (only while UNARMED)"
+                    title = f"NERO {'TEST SIMULATION' if robot.simulation else 'PHYSICAL ROBOT'} | {robot.side.upper()} ARM(S) | {workspace_label}"
+                    text += "\nE: ENABLE selected arms at current poses (only while UNARMED)"
                     text += "\nG: target 30 mm above the original arming pose (does not stack)"
                     if getattr(robot, "gripper_control", False):
-                        key = "1" if robot.side == "left" else "2"
-                        text += f"\n{key}: toggle {robot.side} gripper | force setting: {robot.gripper_force_n:g} N"
+                        controls = ("1: left gripper | 2: right gripper" if robot.side == "both" else
+                                    f"{'1' if robot.side == 'left' else '2'}: {robot.side} gripper")
+                        text += f"\n{controls} | force setting: {robot.gripper_force_n:g} N"
                         text += "\nGripper travel uses controller range; physical zero is not independently calibrated"
                     text += ("\nFull workspace: model joint limits apply; NO collision avoidance" if workspace_radius_m is None
                              else f"\nWorkspace: {workspace_label}, at/above start height")
                     if lift_target is not None:
-                        anchor = np.asarray(getattr(lift_target, robot.side).pose.position_m) - [0, 0, TEST_LIFT_M]
-                        target_delta = (np.asarray(getattr(targets, robot.side).pose.position_m) - anchor) * 1000
-                        measured_delta = (np.asarray(getattr(observed, robot.side + "_tcp").position_m) - anchor) * 1000
-                        text += "\nTarget offset XYZ (mm): " + ", ".join(f"{v:+.1f}" for v in target_delta)
-                        text += "\nMeasured offset XYZ (mm): " + ", ".join(f"{v:+.1f}" for v in measured_delta)
-                        if workspace_radius_m is not None:
-                            remaining = max(0., workspace_radius_m * 1000 - np.linalg.norm(target_delta))
-                            text += f"\nWorkspace radius remaining: {remaining:.1f} mm"
-                            if remaining < .1:
-                                text += " | AT LIMIT: drag back toward the starting position"
+                        for side in draggable_sides:
+                            anchor = np.asarray(getattr(lift_target, side).pose.position_m) - [0, 0, TEST_LIFT_M]
+                            target_delta = (np.asarray(getattr(targets, side).pose.position_m) - anchor) * 1000
+                            measured_delta = (np.asarray(getattr(observed, side + "_tcp").position_m) - anchor) * 1000
+                            text += f"\n{side} target offset XYZ (mm): " + ", ".join(f"{v:+.1f}" for v in target_delta)
+                            text += f"\n{side} measured offset XYZ (mm): " + ", ".join(f"{v:+.1f}" for v in measured_delta)
+                            if workspace_radius_m is not None:
+                                remaining = max(0., workspace_radius_m * 1000 - np.linalg.norm(target_delta))
+                                text += f"\nWorkspace radius remaining: {remaining:.1f} mm"
+                                if remaining < .1:
+                                    text += " | AT LIMIT: drag back toward the starting position"
                     footer = "Space / R: servo HOLD | Q: HOLD and close (motors stay enabled)\nSupervised free-space test only. No collision protection or physical E-stop guarantee."
                 drag_help = (f"Only {robot.side.upper()} red target is active; gray target is locked | Double-click red sphere, Ctrl+right drag: move"
-                             if hardware_control else "Double-click red sphere | Ctrl+right drag: move | Ctrl+left drag: rotate")
+                             if hardware_control and robot.side != "both" else "Double-click red sphere | Ctrl+right drag: move | Ctrl+left drag: rotate")
                 if hardware_control and workspace_radius_m is None:
                     drag_help += " | Ctrl+left drag: rotate"
                 viewer.set_texts([
@@ -447,9 +451,9 @@ def run_viewer(robot: RobotInterface, duration=None, log_path=None, on_ready=Non
 def _main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--backend", choices=("sim", "real-preview", "real-commissioning", "commissioning-sim"), default="sim",
-                        help="sim/real-preview never move hardware; real-commissioning starts unarmed and E enables one arm")
+                        help="sim/real-preview never move hardware; real-commissioning starts unarmed and E enables selected arms")
     parser.add_argument("--mapping", type=Path, default=ROOT / "configs/hardware_mapping.json")
-    parser.add_argument("--side", choices=SIDES, help="Single arm selected for commissioning")
+    parser.add_argument("--side", choices=(*SIDES, "both"), default="both", help="Arms controlled by this session (default: both)")
     parser.add_argument("--gripper", action="store_true",
                         help="Opt in to selected-gripper feedback/control; E alone does not open/close it")
     parser.add_argument("--gripper-force-n", type=float, default=1.0,
@@ -476,7 +480,7 @@ def _main():
         except ValueError as error:
             parser.error(str(error))
         if args.side is None:
-            parser.error("Commissioning requires --side left or --side right")
+            parser.error("Commissioning requires --side left, right, or both")
         from .hardware_session import HardwareSession
         if args.log is None:
             args.log = ROOT / "logs/commissioning" / f"{args.backend}-{time.time_ns()}.jsonl"
@@ -490,9 +494,9 @@ def _main():
                 print("FULL WORKSPACE: no starting-position radius, height floor, rotation cap or joint-excursion cap. Joint position limits and controller-reported speed/acceleration limits apply. NO collision avoidance.", flush=True)
             else:
                 print(f"Workspace radius: {workspace_radius_m * 100:g} cm. Joint excursion remains limited to 0.45 rad; not every target is reachable.", flush=True)
-            print("Starts UNARMED. E enables the selected arm at its current posture.", flush=True)
+            print("Starts UNARMED. E enables the selected arms at their current postures.", flush=True)
             if args.gripper:
-                print(f"Gripper opt-in: {'1' if args.side == 'left' else '2'} toggles the selected gripper after E. E and pose drags alone never command it. No automatic zeroing.", flush=True)
+                print(f"Gripper opt-in: {'1 / 2' if args.side == 'both' else ('1' if args.side == 'left' else '2')} toggles selected grippers after E. E and pose drags alone never command it. No automatic zeroing.", flush=True)
             print("G requests 30 mm above the arming pose; repeated presses do not stack. Space HOLDs; closing does NOT disable motors.", flush=True)
             run_viewer(robot, duration=args.duration, log_path=args.log, hardware_control=True)
         return

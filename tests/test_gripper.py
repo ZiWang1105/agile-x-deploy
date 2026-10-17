@@ -22,7 +22,7 @@ from agilex_deploy.can_feedback import (
     FeedbackAssembler,
     JointSnapshot,
 )
-from agilex_deploy.contract import JOINT_NAMES, Action, ArmTarget
+from agilex_deploy.contract import JOINT_NAMES, Action, ArmTarget, SIDES
 from agilex_deploy.gripper import decode_feedback, query_range, width_frame
 from agilex_deploy.hardware_session import (
     HardwareSession,
@@ -279,6 +279,24 @@ class GripperTests(unittest.TestCase):
             )
             self.assertEqual(bounded.left.gripper_open, 1)
 
+    def test_standalone_sim_first_key_does_not_move_untouched_jaw(self):
+        from agilex_deploy.backends import SimBackend
+        for side in SIDES:
+            with self.subTest(side=side), Robot(SimBackend()) as robot:
+                before = robot.observe()
+                targets = viewer_targets(before)
+                self.assertIsNone(targets.left.gripper_open)
+                self.assertIsNone(targets.right.gripper_open)
+                action = toggle_gripper(targets, before, side)
+                robot.submit_target(action, before.observation_id)
+                other = 1 - SIDES.index(side)
+                for _ in range(180):
+                    robot.target_deadline = time.monotonic() + .5
+                    robot.tick()
+                    self.assertAlmostEqual(robot.observe().gripper_position[other],
+                                           before.gripper_position[other], delta=.001)
+                self.assertGreater(robot.observe().gripper_position[SIDES.index(side)], .99)
+
     def test_shared_api_gripper_motion_keeps_both_arm_poses_and_other_gripper(self):
         transport = SimulatedCommissioningTransport("left", gripper_control=True)
         with Robot(RealBackend(transport)) as robot:
@@ -314,7 +332,7 @@ class GripperTests(unittest.TestCase):
                 robot.submit_target(target, after.observation_id)
 
     def test_viewer_keys_route_through_real_ipc_for_each_selected_gripper(self):
-        for side, key in [("left", "1"), ("right", "2")]:
+        for side, key in [("left", "1"), ("right", "2"), ("both", "1")]:
             submissions = []
 
             @contextmanager
@@ -334,6 +352,8 @@ class GripperTests(unittest.TestCase):
                             key_callback(ord("E"))
                         if self.frame == 2:
                             key_callback(ord(gripper_key))
+                        if self.frame == 3 and side == "both":
+                            key_callback(ord("2"))
                         if self.frame == 6:
                             key_callback(32)
                         return self.frame <= 7
@@ -365,6 +385,10 @@ class GripperTests(unittest.TestCase):
                     run_viewer(session, hardware_control=True)
                 self.assertEqual(session.observe().mode, "hold")
             self.assertTrue(submissions)
+            if side == "both":
+                self.assertEqual(submissions[-1].left.gripper_open, 1)
+                self.assertEqual(submissions[-1].right.gripper_open, 1)
+                continue
             for action in submissions:
                 self.assertEqual(getattr(action, side).gripper_open, 1)
                 self.assertIsNone(

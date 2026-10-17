@@ -36,7 +36,7 @@ if(s.action||s.execution)$('action').textContent=JSON.stringify({target:s.action
 if(s.robot){$('robotMode').textContent=s.robot.mode==='unarmed'?'Unarmed · waiting for Start real policy':`${s.robot.mode} · ${s.robot.reason}`;$('feedback').textContent=['left','right'].map((side,i)=>{const xyz=s.robot[side+'_tcp'].position_m.map(v=>(v*100).toFixed(1)).join(', ');const g=s.robot.gripper_position[i];const phase=s.robot.gripper_states?.[i]?.phase||'unknown';return side.toUpperCase()+' TCP [cm]: '+xyz+'\nGripper: '+(g==null?'unavailable':(100*g).toFixed(0)+'% open')+' · '+phase;}).join('\n\n');}
 if(s.result)$('result').textContent=JSON.stringify(s.result,null,2);
 if(s.viewer_error)$('error').textContent=s.viewer_error;
-if(s.backend==='real')$('modeNote').textContent=(s.execute_real?'Start enables the '+(s.selected_arm||'selected')+' arm and executes your task. Stop / HOLD ends commands; motors stay enabled.':'Monitor only. Relaunch with --execute-real to allow the Start button.')+' Camera extrinsics: '+(s.calibration?.status||'loading')+'.';
+if(s.backend==='real')$('modeNote').textContent=(s.execute_real?'Start enables the '+(s.selected_arm||'selected')+' arm(s) and executes your task. Stop / HOLD ends commands; motors stay enabled.':'Monitor only. Relaunch with --execute-real to allow the Start button.')+' Camera extrinsics: '+(s.calibration?.status||'loading')+'.';
 $('connection').textContent='Connected · localhost';
 }catch(e){$('connection').textContent='Disconnected — server is not reachable';}finally{polling=false;}}
 setInterval(update,350);update();

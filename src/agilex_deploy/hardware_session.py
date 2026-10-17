@@ -17,6 +17,7 @@ from .model import CONTROL_DT, ROOT, Kinematics, initial_positions
 from .official_ik import OfficialDualIK
 from .nero_transport import NeroTransport, MotionGuard, validate_workspace_radius
 from .runtime import Robot
+from .dual_transport import DualNeroTransport, DualMotionGuard, selected_sides
 
 OPERATOR_TIMEOUT = .2
 
@@ -25,8 +26,9 @@ class SimulatedCommissioningTransport:
     """Explicit test plant for commissioning UI and process/watchdog tests."""
     def __init__(self, side, workspace_radius_m=None, gripper_control=False, **_):
         self.side = side
+        self.sides = selected_sides(side)
         self.gripper_control = gripper_control
-        self.gripper_active = False
+        self.gripper_active = set()
         self.workspace_radius_m = validate_workspace_radius(workspace_radius_m)
         self.plant = SimBackend()
         self.armed = False
@@ -35,18 +37,21 @@ class SimulatedCommissioningTransport:
 
     def read_encoders(self):
         sample = self.plant.read()
-        return replace(sample, grippers=tuple(g if self.gripper_control and s == self.side else None
+        return replace(sample, grippers=tuple(g if self.gripper_control and s in self.sides else None
                                              for s, g in zip(SIDES, sample.grippers)))
 
     def arm(self):
         sample = self.read_encoders()
-        self.guard = MotionGuard(self.side, sample.positions, self.plant.kinematics.limits,
-                                 workspace_radius_m=self.workspace_radius_m, gripper_control=self.gripper_control)
+        options = dict(workspace_radius_m=self.workspace_radius_m, gripper_control=self.gripper_control)
+        self.guard = (DualMotionGuard.simulation(sample.positions, self.plant.kinematics.limits, **options)
+                      if self.side == "both" else
+                      MotionGuard(self.side, sample.positions, self.plant.kinematics.limits, **options))
         self.armed = True
 
     def activate_gripper(self, action):
-        if getattr(action, self.side).gripper_open is not None:
-            self.gripper_active = True
+        for side in self.sides:
+            if getattr(action, side).gripper_open is not None:
+                self.gripper_active.add(side)
 
     def send_positions(self, q, grippers):
         if self.armed:
@@ -54,9 +59,9 @@ class SimulatedCommissioningTransport:
             self.guard.command(q, sample.positions)
             command = np.array(sample.positions)
             command[self.guard.indices] = q[self.guard.indices]
-            grip = [.36, .36]
-            if self.gripper_active:
-                grip[SIDES.index(self.side)] = grippers[SIDES.index(self.side)]
+            grip = list(self.plant.read().grippers)
+            for side in self.gripper_active:
+                grip[SIDES.index(side)] = grippers[SIDES.index(side)]
             self.plant.write(command, grip)
             self.plant.advance()
 
@@ -83,7 +88,7 @@ def control_worker(connection, side, mapping, commissioning, simulation, workspa
         # Warm up before opening CAN, so solver construction cannot accumulate
         # a feedback backlog. The nominal warm-up pose is never sent to motors.
         ik = OfficialDualIK(Kinematics(), initial_positions())
-        factory = SimulatedCommissioningTransport if simulation else NeroTransport
+        factory = SimulatedCommissioningTransport if simulation else (DualNeroTransport if side == "both" else NeroTransport)
         transport = factory(side=side, mapping=mapping, commissioning=commissioning,
                             workspace_radius_m=workspace_radius_m,
                             gripper_control=gripper_control, gripper_force_n=gripper_force_n)
@@ -200,6 +205,7 @@ class HardwareSession:
                  commissioning=ROOT / "configs/commissioning.json", simulation=False,
                  workspace_radius_m=None, gripper_control=False, gripper_force_n=1.0):
         self.side = side
+        self.sides = selected_sides(side)
         self.gripper_control = gripper_control
         self.gripper_force_n = gripper_force_n
         if gripper_control:
@@ -251,7 +257,7 @@ class HardwareSession:
         return self._rpc("submit_target", (action, observation_id))
 
     def arm(self):
-        return self._rpc("arm", timeout=6.)
+        return self._rpc("arm", timeout=12. if self.side == "both" else 6.)
 
     def hold(self):
         return self._rpc("hold")

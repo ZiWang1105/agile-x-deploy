@@ -131,7 +131,7 @@ holding after host/power/CAN failure is not certified by this software.
 """
     def __init__(self, side, mapping=ROOT / "configs/hardware_mapping.json",
                  commissioning=ROOT / "configs/commissioning.json", workspace_radius_m=None,
-                 gripper_control=False, gripper_force_n=1.0):
+                 gripper_control=False, gripper_force_n=1.0, *, _shared_reader=None, _feedback_sides=None):
         if side not in SIDES:
             raise ValueError("Select one arm")
         config = json.loads(Path(commissioning).read_text())
@@ -153,6 +153,7 @@ holding after host/power/CAN failure is not certified by this software.
         self.indices = slice(self.side_index*7, self.side_index*7+7)
         self.kin = Kinematics()
         self.reader = None
+        self.owns_reader = _shared_reader is None
         self.writer = None
         self.lock_file = None
         self.armed = False
@@ -163,19 +164,22 @@ holding after host/power/CAN failure is not certified by this software.
         self.fault = None
         self.closed = False
         try:
-            arms = json.loads(Path(mapping).read_text())["arms"]
-            serials = sorted(arms[s]["usb_identity"]["serial"] for s in SIDES)
-            if not all(serial.isalnum() for serial in serials) or len(set(serials)) != 2:
-                raise ValueError("Invalid adapter serial")
-            # Lock the pair, not just the selected arm: two commissioning
-            # viewers must not independently arm both sides at the same time.
-            self.lock_file = open("/tmp/agilex-deploy-" + "-".join(serials) + ".lock", "a")
-            fcntl.flock(self.lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            firmware = query_firmware(mapping)
-            if firmware["missing"] or any(v["software_version"] != "1.21" for v in firmware["firmware"].values()):
-                raise RuntimeError("This commissioning transport supports verified firmware 1.21 only")
-            options = {"gripper_feedback": (side,)} if gripper_control else {}
-            self.reader = PassiveCanFeedback(mapping, motor_feedback=True, **options)
+            if _shared_reader is None:
+                arms = json.loads(Path(mapping).read_text())["arms"]
+                serials = sorted(arms[s]["usb_identity"]["serial"] for s in SIDES)
+                if not all(serial.isalnum() for serial in serials) or len(set(serials)) != 2:
+                    raise ValueError("Invalid adapter serial")
+                # Lock the pair, not just the selected arm: two commissioning
+                # viewers must not independently arm both sides at the same time.
+                self.lock_file = open("/tmp/agilex-deploy-" + "-".join(serials) + ".lock", "a")
+                fcntl.flock(self.lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                firmware = query_firmware(mapping)
+                if firmware["missing"] or any(v["software_version"] != "1.21" for v in firmware["firmware"].values()):
+                    raise RuntimeError("This commissioning transport supports verified firmware 1.21 only")
+                options = {"gripper_feedback": _feedback_sides or (side,)} if gripper_control else {}
+                self.reader = PassiveCanFeedback(mapping, motor_feedback=True, **options)
+            else:
+                self.reader = _shared_reader
             self.last = self.reader.read(timeout=1.)
             if any(v & 0x40 for v in self.last.driver_status):
                 raise RuntimeError("Start with both arms disabled; another controller may own motion")
@@ -212,8 +216,8 @@ holding after host/power/CAN failure is not certified by this software.
                     time.sleep(min(.001, remaining))
         self.last_send = time.monotonic()
 
-    def read_encoders(self):
-        self.last = self.reader.read(timeout=.01)
+    def read_encoders(self, snapshot=None):
+        self.last = self.reader.read(timeout=.01) if snapshot is None else snapshot
         if any(v & ~0x40 for v in self.last.driver_status):
             raise RuntimeError("NERO driver reports a fault")
         if self.armed:
@@ -249,7 +253,8 @@ holding after host/power/CAN failure is not certified by this software.
             self._gripper_feedback()
             self.gripper_active = True
 
-    def arm(self):
+    def prepare_arm(self):
+        """Read limits and seed targets while both arms remain disabled."""
         if self.armed or self.writer is not None:
             raise RuntimeError("Arming is one-shot; restart to repeat commissioning")
         sample = self.read_encoders()
@@ -259,23 +264,27 @@ holding after host/power/CAN failure is not certified by this software.
         self.writer.setsockopt(socket.SOL_CAN_RAW, socket.CAN_RAW_FILTER, b"")
         self.writer.bind((self.reader.channels[self.side],))
         self.writer.setblocking(False)
+        # CAN joint position mode, 100% of configured firmware speed. Installation byte 0
+        # leaves the already configured mounting orientation unchanged.
+        self._send([(0x151, bytes([1, 1, 100, 0, 0, 0, 0, 0]))])
+        # Read after selecting CAN mode, while all motors are still disabled.
+        # No fallback to another arm's settings, and no limit-setting writes.
+        limits = query_motion_limits(self.reader.channels[self.side], self.kin.limits[self.indices])
+        sample = self.read_encoders()
+        if any(v & 0x40 for v in self.last.driver_status):
+            raise RuntimeError("Motor enable changed during limit readback")
+        self.guard = MotionGuard(self.side, sample.positions, self.kin.limits, self.kin,
+                                 workspace_radius_m=self.workspace_radius_m, motion_limits=limits,
+                                 gripper_control=self.gripper_control)
+        print(f"{self.side} controller limits: speed={limits.velocity.tolist()} rad/s, "
+              f"acceleration={limits.acceleration.tolist()} rad/s²; firmware speed=100%", flush=True)
+        self.last_command = np.asarray(sample.positions[self.indices])
+        self._send(position_frames(self.last_command))
+        return sample
+
+    def arm(self):
         try:
-            # CAN joint position mode, 100% of configured firmware speed. Installation byte 0
-            # leaves the already configured mounting orientation unchanged.
-            self._send([(0x151, bytes([1, 1, 100, 0, 0, 0, 0, 0]))])
-            # Read after selecting CAN mode, while all motors are still disabled.
-            # No fallback to another arm's settings, and no limit-setting writes.
-            limits = query_motion_limits(self.reader.channels[self.side], self.kin.limits[self.indices])
-            sample = self.read_encoders()
-            if any(v & 0x40 for v in self.last.driver_status):
-                raise RuntimeError("Motor enable changed during limit readback")
-            self.guard = MotionGuard(self.side, sample.positions, self.kin.limits, self.kin,
-                                     workspace_radius_m=self.workspace_radius_m, motion_limits=limits,
-                                     gripper_control=self.gripper_control)
-            print(f"{self.side} controller limits: speed={limits.velocity.tolist()} rad/s, "
-                  f"acceleration={limits.acceleration.tolist()} rad/s²; firmware speed=100%", flush=True)
-            self.last_command = np.asarray(sample.positions[self.indices])
-            self._send(position_frames(self.last_command))
+            sample = self.prepare_arm()
             # Explicit indices avoid the upstream ambiguity of index 8 versus
             # all joints. No gripper enable or gripper command is sent.
             for joint in range(1, 8):
@@ -304,7 +313,7 @@ holding after host/power/CAN failure is not certified by this software.
                 self.fault += " CAN HOLD could not be delivered."
             raise RuntimeError(f"{self.fault} Cause: {error}") from error
 
-    def send_positions(self, positions, grippers):
+    def prepare_positions(self, positions, grippers):
         if not self.armed:
             return  # Observe-only startup; zero hardware motion writes.
         if self.fault:
@@ -325,6 +334,15 @@ holding after host/power/CAN failure is not certified by this software.
             if fraction is None:
                 raise RuntimeError("Active gripper reference unavailable")
             frames.append(width_frame(fraction, self.gripper_range_m, self.gripper_force_n))
+        return frames, selected
+
+    def send_positions(self, positions, grippers):
+        prepared = self.prepare_positions(positions, grippers)
+        if prepared is None:
+            return
+        self.send_prepared(*prepared)
+
+    def send_prepared(self, frames, selected):
         self._send(frames)
         if self.gripper_active and self.gripper_started is None:
             self.gripper_started = time.monotonic()
@@ -372,7 +390,7 @@ holding after host/power/CAN failure is not certified by this software.
         finally:
             if self.writer is not None:
                 self.writer.close()
-            if self.reader is not None:
+            if self.reader is not None and self.owns_reader:
                 self.reader.close()
             if self.lock_file is not None:
                 self.lock_file.close()

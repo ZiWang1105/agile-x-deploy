@@ -1,0 +1,110 @@
+{
+  "date": "2026-10-16",
+  "backend": "sim",
+  "physical_motion_executed": false,
+  "regression_tests": {
+    "passed": 143,
+    "duration_s": 183.427
+  },
+  "trials": [
+    {
+      "success": true,
+      "task": "place",
+      "placement_dwell_s": {
+        "red": 3.2900000000010987
+      },
+      "max_lift_m": {
+        "red": 0.12651251141623626
+      },
+      "distractor_unchanged": true,
+      "robot_environment_collision_frames": 0,
+      "criterion": "lift >=25 mm; full footprint in tray; released, tray-supported and stable >=1 s; distractor XY change <10 mm; no penetrating arm/environment contacts",
+      "trial": "place_02",
+      "transport": "python",
+      "policy_type": "scripted_rgbd_baseline"
+    },
+    {
+      "success": true,
+      "task": "sort",
+      "placement_dwell_s": {
+        "red": 15.309999999994817,
+        "blue": 3.339999999998149
+      },
+      "max_lift_m": {
+        "red": 0.12624607924847714,
+        "blue": 0.12512535359236737
+      },
+      "distractor_unchanged": true,
+      "robot_environment_collision_frames": 0,
+      "criterion": "lift >=25 mm; full footprint in tray; released, tray-supported and stable >=1 s; distractor XY change <10 mm; no penetrating arm/environment contacts",
+      "trial": "sort_01",
+      "transport": "python",
+      "policy_type": "scripted_rgbd_baseline"
+    },
+    {
+      "success": true,
+      "task": "select",
+      "placement_dwell_s": {
+        "blue": 2.940000000000982
+      },
+      "max_lift_m": {
+        "red": 0.0,
+        "blue": 0.1259404408101379
+      },
+      "distractor_unchanged": true,
+      "robot_environment_collision_frames": 0,
+      "criterion": "lift >=25 mm; full footprint in tray; released, tray-supported and stable >=1 s; distractor XY change <10 mm; no penetrating arm/environment contacts",
+      "policy_exit_code": 0,
+      "transport": "mcp",
+      "trial": "select_mcp_01",
+      "policy_type": "scripted_rgbd_baseline"
+    },
+    {
+      "success": true,
+      "task": "select",
+      "placement_dwell_s": {
+        "blue": 3.030000000001012
+      },
+      "max_lift_m": {
+        "red": 0.0,
+        "blue": 0.12631805244543365
+      },
+      "distractor_unchanged": true,
+      "max_displacement_m": {
+        "red": 0.0015563151735655395,
+        "blue": 0.18724118110612598
+      },
+      "robot_environment_collision_frames": 0,
+      "criterion": "lift >=25 mm; full footprint in tray; released, tray-supported and stable >=1 s; distractor translation <10 mm throughout; no penetrating arm/environment contacts",
+      "policy_exit_code": 0,
+      "transport": "mcp",
+      "policy_type": "scripted_rgbd_baseline",
+      "trial": "select_mcp_02"
+    },
+    {
+      "success": true,
+      "task": "place",
+      "placement_dwell_s": {
+        "red": 24.8299999999456
+      },
+      "max_lift_m": {
+        "red": 0.12140594875233568
+      },
+      "distractor_unchanged": true,
+      "robot_environment_collision_frames": 0,
+      "criterion": "lift >=25 mm; full footprint in tray; released, tray-supported and stable >=1 s; distractor XY change <10 mm; no penetrating arm/environment contacts",
+      "policy_exit_code": 0,
+      "transport": "mcp",
+      "policy_type": "model",
+      "trial": "agent_place_01",
+      "model": "google/gemini-3.8-flash",
+      "model_calls": 34
+    }
+  ],
+  "limitations": [
+    "Individual successful trials, not a success-rate benchmark.",
+    "Physical dual-arm workshop deployment and calibration remain unqualified.",
+    "Sorting baseline moves the arms sequentially; paired arm motion is a separate API operation.",
+    "Earlier select trial used final-position distractor scoring; select_mcp_02 checks maximum translation throughout."
+  ]
+}

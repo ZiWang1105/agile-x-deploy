@@ -150,6 +150,7 @@ class HardwareTests(unittest.TestCase):
         t.kin, t.reader = Kinematics(), Reader()
         t.writer = t.lock_file = t.guard = t.last_command = t.fault = None
         t.armed = t.closed = False
+        t.owns_reader = True
         t.last_send = 0
         # Missing limits must never reach a position command or motor enable.
         failed = copy.copy(t)

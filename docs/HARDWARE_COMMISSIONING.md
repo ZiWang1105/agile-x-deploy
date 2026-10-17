@@ -10,7 +10,7 @@ The fixed stand's robot-left arm maps to USB serial `0030002D4648570A20303731` (
 
 The receive-only viewer resolves current interface names from those USB identities. It does not configure networking, change controller modes, enable motors, release brakes, change zeros, or send CAN data frames. Normal bus ACK behavior is determined by the existing SocketCAN interface configuration.
 
-A separate `real-commissioning` mode implements explicitly armed physical joint-position control through the same `RobotInterface` as simulation. It selects exactly one arm. Its command path has been tested with simulated/in-memory transports, and the real feedback path has been tested while unarmed. Subsequent operator sessions enabled and commanded the left arm; saved encoder readings were consistent with a 30 mm lift. A current-position HOLD was sent on the operator's explicit stop request. This is not qualification of full-range following, collision clearance, or failure-stop behavior. General dual-arm physical dragging remains unqualified.
+A separate `real-commissioning` mode implements explicitly armed physical joint-position control through the same `RobotInterface` as simulation. It supports `--side both` (default), `--side left`, or `--side right`. Both-arm mode shares one owner and validates paired targets before sending either bus. Its command path has been tested with simulated/in-memory transports, and the real feedback path has been tested while unarmed. Subsequent operator sessions enabled and commanded the left arm; saved encoder readings were consistent with a 30 mm lift. A current-position HOLD was sent on the operator's explicit stop request. This is not qualification of full-range following, collision clearance, or failure-stop behavior. General dual-arm physical dragging remains unqualified.
 
 The user subsequently confirmed: "Blue posture matches both arms." This records static visual agreement, not a full-range sign check or TCP/collision calibration. Both controllers replied to firmware queries with **1.21**, corresponding to official SDK profile **v121**. These observations are recorded in `configs/commissioning.json`; that file does not enable motion.
 
@@ -34,7 +34,7 @@ Each explicit E arming request selects CAN J mode at 100% of configured firmware
 
 Simulation uses the left readback as an explicit offline fixture for both arms. It is not a claim about the unqueried right controller. Real arming never falls back to that fixture. No numeric torque ceiling was found in the reviewed manual/API. The SDK's MIT `t_ff` encoding range and URDF effort values do not establish a joint torque safety limit. Joint-position mode keeps drive torque/current protection under firmware control without modifying it. The simulation retains its existing, unqualified actuator force model; no verified sim/real torque equivalence is claimed.
 
-Fresh feedback, firmware fault checks, single-arm ownership, command/heartbeat expiry and operator HOLD remain. The official IK objective and the unreachable/stalled-target diagnostic are numerical control behavior, not additional vendor motion limits. No collision avoidance is implemented. Changes take effect in a newly started process; running controllers are not modified automatically.
+Fresh feedback, firmware fault checks, pair-wide ownership, command/heartbeat expiry and operator HOLD remain. The official IK objective and the unreachable/stalled-target diagnostic are numerical control behavior, not additional vendor motion limits. No collision avoidance is implemented. Changes take effect in a newly started process; running controllers are not modified automatically.
 
 ## CAN queue-fault recovery
 
@@ -169,3 +169,41 @@ Protocol references reviewed on 2026-10-14:
 The NERO user manual section 6.8.4 exposes mounting position in the controller Web UI. The model's correct geometry does not prove that this controller setting matches the physical side mounting. The SDK's NERO API does not expose the Piper-specific `set_installation_pos` method; do not assume the Piper command semantics apply. No mounting setting has been written by this project.
 
 The user confirmed both controllers are configured for side mounting in the official Web UI. This is recorded as user-provided evidence, not software readback. No additional Ethernet connection is required for that check or for the planned CAN control path. The desktop's USB-C connection exposes two working USB-CAN interfaces; the absence of a wired Ethernet link does not prevent CAN communication. No network addresses have been changed by the commissioning tools.
+
+## Coordinated dual-arm sessions
+
+```bash
+# Same control owner and official IK, simulated plant:
+./scripts/run_interactive.sh --backend commissioning-sim --side both --gripper
+# Physical paired session, initially unarmed:
+./scripts/run_interactive.sh --backend real-commissioning --side both --gripper
+```
+
+**E** enables both arms at their measured joint positions. Both controller limit
+readbacks and both starting setpoints are prepared before either arm is enabled.
+Both arms must acknowledge joint-position mode and all seven motor enables.
+A partial arming failure is latched and attempts HOLD on both; it never claims
+success or automatically releases holding torque. **G** targets a 30 mm lift on
+both arms. Both red handles accept dragging; **1/2** command the left/right jaws.
+**Space/R** HOLDs both; closing leaves enabled motors enabled.
+
+The paired owner uses one feedback snapshot per tick and applies each arm's own
+position, velocity, acceleration and gripper-range readback. Target validation
+finishes for both arms before either CAN writer sends a new reference. If a bus
+write fails after the other has succeeded, both HOLD attempts still run and the
+session latches the failure. Independent adapters cannot provide atomic wire
+transmission or a guaranteed physical stop after communication loss.
+
+Paired official-IK tracking, independent grippers, HOLD, heartbeat expiry,
+per-bus routing, partial enable failure, and partial write failure are verified
+with simulated or in-memory transports. These checks do not establish physical
+collision clearance, synchronization accuracy, or failure-stop performance.
+No physical enable or motion was issued while implementing this change.
+
+Validation on 2026-10-16: the complete offline suite passed 130 tests in
+148.175 seconds. A native `commissioning-sim --side both --gripper` viewer
+completed a three-second unarmed launch/render/close check. The IPC test moved
+both TCPs upward 30 mm through official IK, verified each final position within
+3 mm, independently opened/closed the jaws, and verified paired HOLD and
+heartbeat fault latching. The viewer input test exercised E, both gripper keys,
+and HOLD through the actual control process using a simulated plant.

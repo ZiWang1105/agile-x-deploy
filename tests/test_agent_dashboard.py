@@ -35,7 +35,7 @@ class DashboardTests(unittest.TestCase):
 
             class Hardware:
                 def __init__(self, *args, **kwargs):
-                    pass
+                    self_test.assertEqual(args[0], "both")
 
                 def observe(self):
                     return SimpleNamespace(mode="unarmed")
@@ -102,9 +102,10 @@ class DashboardTests(unittest.TestCase):
 
             self_test = self
             policy = SimpleNamespace(calls=0, cost=0)
-            policy.act = lambda *args: (_ for _ in ()).throw(
-                AgentStopped("End mock episode")
-            )
+            def act(*args):
+                self_test.assertEqual(args[-1], ("left", "right"))
+                raise AgentStopped("End mock episode")
+            policy.act = act
             arguments = [
                 "run_agent.py",
                 "--backend",
