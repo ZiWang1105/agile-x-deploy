@@ -6,7 +6,7 @@ requests were made and no API key is included.
 - Full regression suite: 170 tests passed in 202.444 seconds.
 - Focused hand-guiding suite: 11 tests passed in 16.084 seconds. This includes
   an additional supported-power-off regression added after full-suite discovery.
-- Workshop API regression after the camera transition freshness change: 12 tests passed.
+- [Workshop](https://agentic-robotics-workshop.github.io/) API regression after the camera transition freshness change: 12 tests passed.
 - Interactive viewer regression after idle-handle refresh: 8 tests passed.
 - Python API RGB-D baseline: two-arm sorting passed; red lift 126.24 mm,
   blue lift 126.36 mm; zero scored arm/environment collision frames.
@@ -16,7 +16,7 @@ requests were made and no API key is included.
   with no fault event. These are scripted interface checks, not new LLM evaluations.
 
 The focused tests use the installed official SDK encoder methods and a mocked CAN
-plant, the real child-process session API backed by MuJoCo, and the workshop service.
+plant, the real child-process session API backed by MuJoCo, and the [workshop](https://agentic-robotics-workshop.github.io/) service.
 They check source timestamps, leader/follower transitions, local loopback rejection,
 partial failures, no position writes during hand-guiding, fresh-pose reseeding,
 reconnection, independent gripper preservation, and supported shutdown.
