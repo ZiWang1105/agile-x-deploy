@@ -25,6 +25,7 @@ class EncoderSample:
     velocities: tuple[float, ...]
     grippers: tuple[float | None, ...]
     gripper_feedback: tuple[GripperFeedback | None, ...] = (None, None)
+    feedback_status: tuple = ()
 
     def validate(self):
         if self.joint_names != JOINT_NAMES:
@@ -51,7 +52,7 @@ class Backend(Protocol):
     def read(self) -> EncoderSample: ...
     def write(self, positions: np.ndarray, grippers: np.ndarray) -> None: ...
     def advance(self) -> None: ...
-    def hold(self) -> None: ...
+    def hold(self, *, preserve_grippers=False) -> None: ...
     def close(self) -> None: ...
 
 
@@ -71,6 +72,10 @@ class SimBackend:
                 self.data.qpos[self.model.joint(f"{side}_gripper_joint{finger}").qposadr[0]] = sign * .018
         self.sequence = 0
         self.closed = False
+        self.hand_guiding = False
+        self.arm_actuators = np.array([self.model.actuator(n).id for n in JOINT_NAMES])
+        self.arm_gains = self.model.actuator_gainprm[self.arm_actuators].copy()
+        self.arm_bias = self.model.actuator_biasprm[self.arm_actuators].copy()
         self.write(q, np.full(2, .36))
         mujoco.mj_forward(self.model, self.data)
         self.timestamp = time.monotonic()
@@ -98,9 +103,35 @@ class SimBackend:
         self.sequence += 1
         self.timestamp = time.monotonic()
 
-    def hold(self):
+    def hold(self, *, preserve_grippers=False):
+        if self.hand_guiding:
+            return
         sample = self.read()
-        self.write(np.array(sample.positions), np.clip(sample.grippers, 0, 1))
+        if preserve_grippers:
+            # Preserve actuator targets, not measured aperture: under load the
+            # target/measurement difference supplies the grasping force.
+            self.data.ctrl[self.arm_actuators] = np.asarray(sample.positions)
+        else:
+            self.write(np.array(sample.positions), np.clip(sample.grippers, 0, 1))
+
+    def enter_hand_guiding(self):
+        if self.hand_guiding:
+            return
+        self.hold(preserve_grippers=True)
+        # The model already supplies body gravity compensation. Remove arm
+        # position servos only; independent gripper actuators retain their hold.
+        self.model.actuator_gainprm[self.arm_actuators] = 0
+        self.model.actuator_biasprm[self.arm_actuators] = 0
+        self.hand_guiding = True
+
+    def begin_control(self):
+        if not self.hand_guiding:
+            return
+        sample = self.read()
+        self.data.ctrl[self.arm_actuators] = np.asarray(sample.positions)
+        self.model.actuator_gainprm[self.arm_actuators] = self.arm_gains
+        self.model.actuator_biasprm[self.arm_actuators] = self.arm_bias
+        self.hand_guiding = False
 
     def close(self):
         if not self.closed:
@@ -118,7 +149,7 @@ class HardwareTransport(Protocol):
     """
     def read_encoders(self) -> EncoderSample: ...
     def send_positions(self, positions, grippers) -> None: ...
-    def hold(self) -> None: ...
+    def hold(self, *, preserve_grippers=False) -> None: ...
     def close(self) -> None: ...
 
 
@@ -137,8 +168,17 @@ class RealBackend:
     def advance(self):
         pass  # Hardware owns its clock. The runtime must be ticked at 100 Hz.
 
-    def hold(self):
-        self.transport.hold()
+    def hold(self, *, preserve_grippers=False):
+        if preserve_grippers:
+            self.transport.hold(preserve_grippers=True)
+        else:
+            self.transport.hold()
+
+    def enter_hand_guiding(self):
+        self.transport.enter_hand_guiding()
+
+    def begin_control(self):
+        self.transport.begin_control()
 
     def close(self):
         try:

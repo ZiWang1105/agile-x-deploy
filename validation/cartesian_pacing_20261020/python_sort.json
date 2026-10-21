@@ -1,0 +1,22 @@
+{
+  "success": true,
+  "task": "sort",
+  "placement_dwell_s": {
+    "red": 14.78999999999522,
+    "blue": 2.819999999998437
+  },
+  "max_lift_m": {
+    "red": 0.12641293575131135,
+    "blue": 0.12622536737742612
+  },
+  "distractor_unchanged": true,
+  "max_displacement_m": {
+    "red": 0.1908619870837382,
+    "blue": 0.19110679775713232
+  },
+  "robot_environment_collision_frames": 0,
+  "criterion": "lift >=25 mm; full footprint in tray; released, tray-supported and stable >=1 s; distractor translation <10 mm throughout; no penetrating arm/environment contacts",
+  "policy_exit_code": 0,
+  "transport": "python",
+  "policy_type": "scripted_rgbd_baseline"
+}

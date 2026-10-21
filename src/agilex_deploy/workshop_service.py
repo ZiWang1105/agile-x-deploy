@@ -5,10 +5,12 @@ truth, reset, enable, and scoring stay in the organizer process.
 """
 
 from collections import OrderedDict
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import asdict
 import base64
 import copy
 import json
+import multiprocessing as mp
 import secrets
 from pathlib import Path
 import threading
@@ -21,13 +23,18 @@ import numpy as np
 
 from .agent_policy import pinch_pose, tcp_pose
 from .agent_sensors import ground_pixel, quantize_depth
-from .contract import Action, ArmTarget, JointAction, Pose, SIDES, finite_tuple
+from .contract import Action, ArmTarget, JointAction, MixedAction, Pose, SIDES, finite_tuple
 from .controller import pose_error
 from .model import Kinematics, ROOT
 from .official_ik import OfficialDualIK
+from .motion_limits import bounded_hold_reference
+from .workshop_planning import close_planner, initialize_planner, planner_ready, plan_step
 
 API_VERSION = "1.0"
 TERMINAL = {"succeeded", "failed", "cancelled"}
+CAPTURED_FRAME_LIMIT = 32
+POSITION_TOLERANCE_M = .005
+ORIENTATION_TOLERANCE_RAD = .05
 
 
 class WorkshopError(RuntimeError):
@@ -64,11 +71,18 @@ class WorkshopService:
         calibration=None,
         camera_serial=None,
         lease_s=120,
+        gravity_comp=False,
     ):
         if backend not in ("sim", "real"):
             raise ValueError("backend must be sim or real")
         self.backend, self.task, self.seed = backend, task, seed
+        if type(gravity_comp) is not bool:
+            raise ValueError("gravity_comp must be a boolean")
+        self.gravity_comp = gravity_comp
         self.lock = threading.RLock()
+        # Camera publication and preview must not wait behind arm/mode RPCs.
+        self.frames_lock = threading.RLock()
+        self.frame_available = threading.Condition(self.frames_lock)
         self.kin_lock = threading.RLock()
         self.done = threading.Event()
         self.camera_ready = threading.Event()
@@ -84,14 +98,21 @@ class WorkshopService:
         self.operations = OrderedDict()
         self.requests = {}
         self.frames = OrderedDict()
+        # Model inference can outlast the live ring buffer. Retain frames handed
+        # to policies independently; dashboard polling must not evict them.
+        self.captured_frames = OrderedDict()
         self.frame_counter = 0
         self.grippers = [None, None]
         self.target = None
         self.events = []
+        self.policy_events = []
+        self.policy_event_sequence = 0
         self.output = Path(output or ROOT / "logs/workshop" / str(time.time_ns()))
         self.output.mkdir(parents=True, exist_ok=True)
         self.robot = self.plant = self.camera = None
         self.worker = self.camera_thread = None
+        self.planner_pool = None
+        self.planning_generation = mp.get_context("spawn").Value("Q", 0, lock=False)
         self.closed = False
         from .workshop_tasks import TASKS
 
@@ -108,10 +129,17 @@ class WorkshopService:
             else:
                 from .hardware_session import HardwareSession
 
-                self.robot = HardwareSession("both", gripper_control=True)
+                self.robot = HardwareSession("both", gripper_control=True, gravity_comp=gravity_comp)
             observed = self.robot.observe()
             self.kin = Kinematics()
+            self.action_kin = Kinematics()
             self.ik = OfficialDualIK(self.kin, observed.joint_positions_rad)
+            self.planner_pool = ProcessPoolExecutor(
+                max_workers=1, mp_context=mp.get_context("spawn"),
+                initializer=initialize_planner,
+                initargs=(observed.joint_positions_rad, self.planning_generation))
+            if not self.planner_pool.submit(planner_ready).result(timeout=30):
+                raise RuntimeError("Cartesian planner initialization failed")
             self.camera_thread = threading.Thread(
                 target=self._camera_loop,
                 args=(calibration, camera_serial),
@@ -142,6 +170,8 @@ class WorkshopService:
     def capabilities(self):
         return dict(
             api_version=API_VERSION,
+            workshop=dict(name="Workshop on Agentic Robotics",
+                          url="https://agentic-robotics-workshop.github.io/"),
             arms=list(SIDES),
             cameras=["head"],
             pose_frame="base_link",
@@ -154,7 +184,18 @@ class WorkshopService:
             grippers_independent=True,
             ik="AgileX QuestArmTeleop ArmIK",
             joint_control=True,
+            motion_planner="online_cartesian_waypoints",
+            motion_path=dict(position="linear", orientation="validated_shortest_or_complementary_arc",
+                             preflight="sampled_official_ik_residuals_and_joint_bounds",
+                             feedback="measured", ik="official_agilex",
+                             lookahead="joint_stopping_horizon",
+                             translation_resolution_m=.01, rotation_resolution_rad=.05),
+            differential_ik=False,
             motion_is_collision_planned=False,
+            gravity_comp=self.gravity_comp,
+            idle_mode="hand_guiding" if self.gravity_comp else "hold",
+            normal_policy_exit="hand_guiding" if self.gravity_comp else "hold",
+            fault_behavior="latched; no automatic disable or mode recovery",
         )
 
     def claim(self, client_id):
@@ -192,17 +233,22 @@ class WorkshopService:
         with self.lock:
             if self.stopped or self.fault:
                 raise WorkshopError("STOPPED", self.fault or "Restart after stop")
-            if (
-                not self.frames
-                or time.monotonic()
-                - next(reversed(self.frames.values()))[1].timestamp_s
-                > 0.5
-            ):
-                raise WorkshopError("STALE_CAMERA", "Fresh head-camera frame required")
+            with self.frames_lock:
+                if (
+                    not self.frames
+                    or time.monotonic()
+                    - next(reversed(self.frames.values()))[1].timestamp_s
+                    > 0.5
+                ):
+                    raise WorkshopError("STALE_CAMERA", "Fresh head-camera frame required")
             if self.enabled:
                 return
             if self.backend == "real":
                 self.robot.arm()
+                with self.kin_lock:
+                    self.kin.limits[:] = self.robot.motion_limits()["position"]
+            elif self.gravity_comp:
+                self.robot.enter_hand_guiding()
             self.robot.start()
             self.last_enable_s = time.monotonic()
             self.enabled = True
@@ -242,13 +288,17 @@ class WorkshopService:
                     expected_serial=serial,
                 )
             while not self.done.is_set():
-                # ZED expects an observation object, not the public JSON envelope.
-                observed, frame = self.camera.capture()
+                if self.backend == "real":
+                    # This worker never observes the robot: enable and other
+                    # slow RPCs cannot block RGB-D acquisition or publication.
+                    observed, frame = None, self.camera.capture_frame()
+                else:
+                    observed, frame = self.camera.capture()
                 if (
                     frame.timestamp_s < self.last_enable_s
                     and time.monotonic() - frame.timestamp_s > 0.5
                 ):
-                    continue  # Discard a frame captured before a slow physical arming call.
+                    continue  # Discard a frame captured before a slow arm/mode transition.
                 frame.validate()
                 if self.backend == "sim":
                     import mujoco
@@ -266,13 +316,14 @@ class WorkshopService:
                         ".jpg", cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
                     )
                     self.scene_jpeg = encoded.tobytes()
-                with self.lock:
+                with self.frame_available:
                     self.frame_counter += 1
                     self.frames[str(self.frame_counter)] = (observed, frame)
                     while len(self.frames) > 64:
                         self.frames.popitem(last=False)
+                    self.frame_available.notify_all()
                 self.camera_ready.set()
-                self.done.wait(0.2)
+                self.done.wait(0.03 if self.backend == "real" else 0.2)
         except Exception as error:
             with self.lock:
                 self.fault = f"Camera failure: {error}"
@@ -283,21 +334,42 @@ class WorkshopService:
             if self.camera is not None:
                 self.camera.close()
 
-    def capture(self):
-        with self.lock:
-            if not self.frames:
-                raise WorkshopError("NO_FRAME", "Camera has no frame")
-            frame_id = next(reversed(self.frames))
-            observed, frame = self.frames[frame_id]
-            if time.monotonic() - frame.timestamp_s > 0.5:
-                raise WorkshopError("STALE_CAMERA", "Camera acquisition is stale")
+    def capture(self, *, retain=True):
+        # Policy requests match fresh robot feedback to the latest camera frame.
+        # Dashboard preview does not require robot feedback and stays live during
+        # enable. Neither path asks the camera worker to acquire a frame on demand.
+        match_feedback = self.backend == "real" and retain
+        deadline = time.monotonic() + 1.
+        while True:
+            observed = self._raw_observe() if match_feedback else None
+            with self.frame_available:
+                if not self.frames:
+                    raise WorkshopError("NO_FRAME", "Camera has no frame")
+                frame_id = next(reversed(self.frames))
+                stored_observed, frame = self.frames[frame_id]
+                if not match_feedback:
+                    observed = stored_observed
+                if time.monotonic() - frame.timestamp_s > 0.5:
+                    raise WorkshopError("STALE_CAMERA", "Camera acquisition is stale")
+                if match_feedback and abs(observed.timestamp_s - frame.timestamp_s) > .1:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise WorkshopError("CAMERA_SYNC", "No robot feedback matched to latest camera frame within 100 ms")
+                    self.frame_available.wait(min(.05, remaining))
+                    continue
+                if retain:
+                    self.captured_frames[frame_id] = (observed, frame)
+                    self.captured_frames.move_to_end(frame_id)
+                    while len(self.captured_frames) > CAPTURED_FRAME_LIMIT:
+                        self.captured_frames.popitem(last=False)
+                break
         rgb_ok, rgb = cv2.imencode(".png", cv2.cvtColor(frame.rgb, cv2.COLOR_RGB2BGR))
         depth_ok, depth = cv2.imencode(".png", quantize_depth(frame.depth_m))
         if not rgb_ok or not depth_ok:
             raise RuntimeError("Frame encoding failed")
         frame_dir = self.output / "policy_frames"
         frame_dir.mkdir(exist_ok=True)
-        if not (frame_dir / f"{frame_id}.json").exists():
+        if retain and not (frame_dir / f"{frame_id}.json").exists():
             (frame_dir / f"{frame_id}_rgb.png").write_bytes(rgb.tobytes())
             (frame_dir / f"{frame_id}_depth.png").write_bytes(depth.tobytes())
             (frame_dir / f"{frame_id}.json").write_text(
@@ -310,18 +382,19 @@ class WorkshopService:
             rgb_png_base64=base64.b64encode(rgb).decode(),
             depth_png_base64=base64.b64encode(depth).decode(),
             depth_png_scale_m=0.001,
-            observation_id=observed.observation_id,
-            robot_timestamp_s=observed.timestamp_s,
-            robot_camera_skew_s=abs(frame.timestamp_s - observed.timestamp_s),
+            observation_id=observed.observation_id if observed is not None else None,
+            robot_timestamp_s=observed.timestamp_s if observed is not None else None,
+            robot_camera_skew_s=abs(frame.timestamp_s - observed.timestamp_s) if observed is not None else None,
         )
 
     def deproject(self, frame_id, pixel_uv):
-        with self.lock:
-            if str(frame_id) not in self.frames:
+        with self.frames_lock:
+            stored = self.captured_frames.get(str(frame_id), self.frames.get(str(frame_id)))
+            if stored is None:
                 raise WorkshopError(
-                    "UNKNOWN_FRAME", "Frame expired from camera cache; capture again"
+                    "UNKNOWN_FRAME", "Frame is unknown or older than the last 32 policy captures; capture again"
                 )
-            _, frame = self.frames[str(frame_id)]
+            _, frame = stored
         point, _ = ground_pixel(frame, pixel_uv, [0, 0, 0])
         return dict(
             position_m=point.tolist(),
@@ -358,7 +431,7 @@ class WorkshopService:
             raise ValueError("tool_frame must be tcp or pinch")
         tcp = tcp_pose(target) if tool_frame == "pinch" else target
         observed = self.observe()
-        q = np.asarray(observed["joint_positions_rad"])
+        q = bounded_hold_reference(observed["joint_positions_rad"], self.kin.limits)
         seed = (
             q[index * 7 : index * 7 + 7]
             if seed_rad is None
@@ -368,16 +441,20 @@ class WorkshopService:
             try:
                 result = self.ik.solve(arm, tcp, seed)
             except RuntimeError as error:
-                return dict(success=False, joints_rad=None, solver_status=str(error))
+                return dict(success=False, solver_success=False, joints_rad=None, solver_status=str(error))
             q[index * 7 : index * 7 + 7] = result
             self._joint_bounds(q)
             self.kin.update(q)
             residual = pose_error(self.kin.pose(arm), tcp)
         return dict(
-            success=True,
+            success=bool(np.linalg.norm(residual[:3]) <= POSITION_TOLERANCE_M
+                         and np.linalg.norm(residual[3:]) <= ORIENTATION_TOLERANCE_RAD),
+            solver_success=True,
             joints_rad=result.tolist(),
             position_error_m=float(np.linalg.norm(residual[:3])),
             orientation_error_rad=float(np.linalg.norm(residual[3:])),
+            position_tolerance_m=POSITION_TOLERANCE_M,
+            orientation_tolerance_rad=ORIENTATION_TOLERANCE_RAD,
             solver_status=self.ik.last_status[arm],
             within_model_limits=True,
             collision_checked=False,
@@ -390,8 +467,8 @@ class WorkshopService:
         request_id,
         steps,
         timeout_s=10,
-        position_tolerance_m=0.005,
-        orientation_tolerance_rad=0.05,
+        position_tolerance_m=POSITION_TOLERANCE_M,
+        orientation_tolerance_rad=ORIENTATION_TOLERANCE_RAD,
     ):
         timeout_s = number(timeout_s, "timeout_s", 0.1, 300)
         pt = number(position_tolerance_m, "position_tolerance_m", 0.0001, 0.1)
@@ -473,21 +550,63 @@ class WorkshopService:
                     "gripper command must be integer 0 (close) or 1 (open)"
                 )
 
-    def _action(self, step, observed):
+    def _prepare_action_locked(self, op, step, observed):
+        if not step.get("poses"):
+            op["action"] = self._action(step, observed)
+            return
+        future = op.get("_plan_future")
+        if future is None:
+            op["_plan_start"] = observed
+            op["planning"] = dict(state="running")
+            op["_plan_future"] = self.planner_pool.submit(
+                plan_step, self.planning_generation.value, copy.deepcopy(step),
+                observed.joint_positions_rad, self.kin.limits.copy(),
+                op["position_tolerance_m"], op["orientation_tolerance_rad"])
+            return
+        if not future.done():
+            return
+        try:
+            reports = future.result()
+        except Exception as error:
+            self._hold_locked("Cartesian planning failed", preserve_grippers=True)
+            op.update(state="failed", reason="PLANNING_FAILED",
+                      planning=dict(state="failed", error=str(error), report=getattr(error, "report", None)))
+            self.event("operation_end", **self._public_operation(op))
+            return
+        # A validated path belongs to its measured start. Replan if the arm
+        # changed while validation ran, using the existing feedback envelope
+        # and this operation's pose criteria, not a new motion speed limit.
+        start = op["_plan_start"]
+        for side in step["poses"]:
+            i = SIDES.index(side) * 7
+            joint_drift = np.max(np.abs(np.asarray(observed.joint_positions_rad)[i:i+7]
+                                        - np.asarray(start.joint_positions_rad)[i:i+7]))
+            drift = pose_error(getattr(observed, side + "_tcp"), getattr(start, side + "_tcp"))
+            if (joint_drift > .02 or np.linalg.norm(drift[:3]) > op["position_tolerance_m"]
+                    or np.linalg.norm(drift[3:]) > op["orientation_tolerance_rad"]):
+                op.pop("_plan_future")
+                op["planning"] = dict(state="replanning", reason="measured start changed")
+                return
+        op["planning"] = dict(state="validated", arms=reports)
+        op["action"] = self._action(step, observed, plans=reports)
+        self.event("motion_plan", operation_id=op["operation_id"], step_index=op["step_index"], arms=reports)
+
+    def _action(self, step, observed, plans=None):
         arms = {s: ArmTarget(getattr(observed, s + "_tcp"), None) for s in SIDES}
         for s, value in step.get("poses", {}).items():
             target = pose(value)
             arms[s] = ArmTarget(
                 tcp_pose(target) if step.get("tool_frame") == "pinch" else target, None
             )
-        q = np.asarray(observed.joint_positions_rad).copy()
+        q = bounded_hold_reference(observed.joint_positions_rad, self.kin.limits)
         if step.get("joints"):
-            with self.kin_lock:
-                for s, value in step["joints"].items():
-                    i = SIDES.index(s) * 7
-                    q[i : i + 7] = value
-                self.kin.update(q)
-                arms = {s: ArmTarget(self.kin.pose(s), None) for s in SIDES}
+            # This FK instance belongs to the execution worker. Read-only IK
+            # queries and the planning process never acquire its state or lock.
+            for s, value in step["joints"].items():
+                i = SIDES.index(s) * 7
+                q[i : i + 7] = value
+            self.action_kin.update(q)
+            arms = {s: ArmTarget(self.action_kin.pose(s), None) for s in SIDES}
         for s, value in step.get("grippers", {}).items():
             self.grippers[SIDES.index(s)] = value
         arms = {
@@ -495,8 +614,15 @@ class WorkshopService:
         }
         return (
             JointAction(**arms, joint_positions_rad=tuple(q))
-            if step.get("joints")
-            else Action(**arms)
+            # Jaw-only steps hold measured joints; they must not create an
+            # implicit arm path merely because fresh FK differs slightly.
+            if not step.get("poses")
+            else MixedAction(**arms, cartesian_arms=tuple(step["poses"]),
+                             joint_positions_rad=tuple(q),
+                             rotation_arcs=tuple((plans or {}).get(s, {}).get("selected_arc", "shortest")
+                                                 for s in SIDES),
+                             cartesian_starts=tuple(pose(plans[s]["start_pose"]) if plans and s in plans else None
+                                                    for s in SIDES))
         )
 
     @staticmethod
@@ -505,7 +631,7 @@ class WorkshopService:
             {
                 k: v
                 for k, v in op.items()
-                if k not in {"action", "steps", "settled_since"}
+                if not k.startswith("_") and k not in {"action", "steps", "settled_since"}
             }
         )
 
@@ -515,23 +641,29 @@ class WorkshopService:
                 raise WorkshopError("UNKNOWN_OPERATION", "Unknown operation ID")
             return self._public_operation(self.operations[operation_id])
 
-    def _hold_locked(self, reason, latch=False):
+    def _hold_locked(self, reason, latch=False, preserve_grippers=False):
+        self.planning_generation.value += 1
         self.target = None
         self.grippers = [None, None]
         if self.active:
             op = self.operations[self.active]
+            if op.get("_plan_future") is not None:
+                op["_plan_future"].cancel()
             op.update(state="cancelled", reason=reason)
             self.active = None
         if latch:
             self.stopped = True
         if self.robot is not None:
-            self.robot.hold()
+            if preserve_grippers:
+                self.robot.hold(preserve_grippers=True)
+            else:
+                self.robot.hold()
         self.event("hold", reason=reason, latched=latch)
 
     def hold(self, client_id):
         with self.lock:
             self._authorize(client_id)
-            self._hold_locked("participant HOLD")
+            self._hold_locked("participant HOLD", preserve_grippers=True)
             return dict(state="holding", motors_disabled=False)
 
     def cancel(self, client_id, operation_id):
@@ -545,13 +677,115 @@ class WorkshopService:
     def release(self, client_id):
         with self.lock:
             self._authorize(client_id)
-            self._hold_locked("participant released session")
+            self._hold_locked("participant released session", preserve_grippers=True)
+            if self.gravity_comp and self.enabled and not self.fault:
+                self._enter_hand_guiding_locked("policy session ended")
             self.owner = None
             return dict(released=True)
 
     def operator_stop(self):
         with self.lock:
             self._hold_locked("operator STOP", latch=True)
+            if self.gravity_comp and self.enabled and not self.fault:
+                self._enter_hand_guiding_locked("operator STOP")
+
+    def _enter_hand_guiding_locked(self, reason):
+        if not self.gravity_comp:
+            raise RuntimeError("Hand-guiding is disabled (gravity_comp=false)")
+        try:
+            self.robot.enter_hand_guiding()
+            self.event("hand_guiding", reason=reason, motors_disabled=False)
+        except Exception as error:
+            self.fault = f"Hand-guiding transition failed: {error}"
+            self.stopped = True
+            self.event("fault", reason=self.fault)
+            raise
+
+    def _advance_operation_locked(self, op, step, observed):
+        if op.get("_dispatched") and observed.mode == "hold" and observed.reason == "unreachable or stalled target":
+            self._hold_locked(observed.reason, preserve_grippers=True)
+            op.update(state="failed", reason="PATH_STALLED")
+            self.event("operation_end", **self._public_operation(op))
+            return
+        self.target = op["action"]
+        residuals = {
+            s: pose_error(
+                getattr(observed, s + "_tcp"),
+                getattr(self.target, s).pose,
+            )
+            for s in step.get("poses", {})
+        }
+        reached = all(
+            np.linalg.norm(e[:3]) <= op["position_tolerance_m"]
+            and np.linalg.norm(e[3:])
+            <= op["orientation_tolerance_rad"]
+            for e in residuals.values()
+        )
+        # Endpoint proximity alone cannot complete a complementary rotation
+        # before it has traversed its validated waypoint sequence.
+        for side, plan in op.get("planning", {}).get("arms", {}).items():
+            if side not in step.get("poses", {}):
+                continue
+            if plan["selected_arc"] == "alternate":
+                path = observed.motion_paths.get(side, {})
+                reached &= (path.get("target") is not None
+                            and pose(path["target"]) == getattr(self.target, side).pose
+                            and path.get("waypoint", -1) == path.get("segments", -2))
+        if step.get("joints"):
+            reached &= (
+                max(
+                    abs(
+                        np.asarray(observed.joint_positions_rad)
+                        - self.target.joint_positions_rad
+                    )
+                )
+                <= 0.01
+            )
+        grip_reports = {}
+        for s in step.get("grippers", {}):
+            state = observed.gripper_states[SIDES.index(s)]
+            reached &= state.phase == "reached" or (
+                step["grippers"][s] == 0
+                and state.phase == "stalled"
+            )
+            grip_reports[s] = asdict(state)
+        op["residuals"] = {
+            s: dict(
+                position_m=float(np.linalg.norm(e[:3])),
+                orientation_rad=float(np.linalg.norm(e[3:])),
+            )
+            for s, e in residuals.items()
+        }
+        op["gripper_feedback"] = grip_reports
+        now = time.monotonic()
+        op["settled_since"] = (
+            (op["settled_since"] or now) if reached else None
+        )
+        if op["settled_since"] and now - op["settled_since"] >= 0.1:
+            op.pop("_plan_future", None)
+            op.pop("_dispatched", None)
+            op["step_index"] += 1
+            op["progress"] = op["step_index"] / len(op["steps"])
+            op["settled_since"] = op["action"] = None
+            # Keep the completed posture fixed while the next step is planned.
+            self.robot.hold(preserve_grippers=True)
+            fresh = self.robot.observe()
+            self.target = JointAction(
+                *(ArmTarget(getattr(fresh, s + "_tcp"), self.grippers[i])
+                  for i, s in enumerate(SIDES)),
+                joint_positions_rad=tuple(bounded_hold_reference(
+                    fresh.joint_positions_rad, self.kin.limits)))
+            if op["step_index"] == len(op["steps"]):
+                op.update(
+                    state="succeeded",
+                    completion="measured endpoint/settled gripper; not a grasp-success claim",
+                )
+                self.active = None
+                self.event(
+                    "operation_end", **self._public_operation(op)
+                )
+            else:
+                op.pop("planning", None)
 
     def _run(self):
         while not self.done.is_set():
@@ -571,85 +805,36 @@ class WorkshopService:
                             op = self.operations[self.active]
                             step = op["steps"][op["step_index"]]
                             if op["action"] is None:
-                                op["action"] = self._action(step, observed)
-                            self.target = op["action"]
-                            residuals = {
-                                s: pose_error(
-                                    getattr(observed, s + "_tcp"),
-                                    getattr(self.target, s).pose,
-                                )
-                                for s in step.get("poses", {})
-                            }
-                            reached = all(
-                                np.linalg.norm(e[:3]) <= op["position_tolerance_m"]
-                                and np.linalg.norm(e[3:])
-                                <= op["orientation_tolerance_rad"]
-                                for e in residuals.values()
-                            )
-                            if step.get("joints"):
-                                reached &= (
-                                    max(
-                                        abs(
-                                            np.asarray(observed.joint_positions_rad)
-                                            - self.target.joint_positions_rad
-                                        )
-                                    )
-                                    <= 0.01
-                                )
-                            grip_reports = {}
-                            for s in step.get("grippers", {}):
-                                state = observed.gripper_states[SIDES.index(s)]
-                                reached &= state.phase == "reached" or (
-                                    step["grippers"][s] == 0
-                                    and state.phase == "stalled"
-                                )
-                                grip_reports[s] = asdict(state)
-                            op["residuals"] = {
-                                s: dict(
-                                    position_m=float(np.linalg.norm(e[:3])),
-                                    orientation_rad=float(np.linalg.norm(e[3:])),
-                                )
-                                for s, e in residuals.items()
-                            }
-                            op["gripper_feedback"] = grip_reports
-                            now = time.monotonic()
-                            op["settled_since"] = (
-                                (op["settled_since"] or now) if reached else None
-                            )
-                            if op["settled_since"] and now - op["settled_since"] >= 0.1:
-                                op["step_index"] += 1
-                                op["progress"] = op["step_index"] / len(op["steps"])
-                                op["settled_since"] = op["action"] = None
-                                if op["step_index"] == len(op["steps"]):
-                                    op.update(
-                                        state="succeeded",
-                                        completion="measured endpoint/settled gripper; not a grasp-success claim",
-                                    )
-                                    self.active = None
-                                    self.robot.hold()
-                                    fresh = self.robot.observe()
-                                    self.target = Action(
-                                        *(
-                                            ArmTarget(
-                                                getattr(fresh, s + "_tcp"),
-                                                self.grippers[i],
-                                            )
-                                            for i, s in enumerate(SIDES)
-                                        )
-                                    )
-                                    self.event(
-                                        "operation_end", **self._public_operation(op)
-                                    )
-                            elif now - op["started_s"] > op["timeout_s"]:
-                                self._hold_locked("operation timed out")
+                                if observed.mode == "hand_guiding":
+                                    self.robot.begin_control()
+                                    self.last_enable_s = time.monotonic()
+                                    observed = self.robot.observe()
+                                self._prepare_action_locked(op, step, observed)
+                            if op["action"] is not None and self.active == op["operation_id"]:
+                                self._advance_operation_locked(op, step, observed)
+                            if self.active == op["operation_id"] and time.monotonic() - op["started_s"] > op["timeout_s"]:
+                                self._hold_locked("operation timed out", preserve_grippers=True)
                                 op.update(state="failed", reason="TIMEOUT")
-                        if self.target is not None:
+                                self.event("operation_end", **self._public_operation(op))
+                        if self.target is not None and not self.done.is_set():
                             fresh = self.robot.observe()
+                            if self.active is not None and fresh.mode == "hold" and fresh.reason == "unreachable or stalled target":
+                                raise RuntimeError("PATH_STALLED: unreachable or stalled target")
                             self.robot.submit_target(self.target, fresh.observation_id)
+                            if self.active is not None:
+                                self.operations[self.active]["_dispatched"] = True
             except Exception as error:
                 with self.lock:
-                    self.fault = str(error)
                     op = self.operations.get(self.active)
+                    if op is not None and str(error).startswith(("PATH_STALLED:", "RuntimeError: PATH_STALLED:")):
+                        try:
+                            self._hold_locked("unreachable or stalled target", preserve_grippers=True)
+                            op.update(state="failed", reason="PATH_STALLED")
+                            self.event("operation_end", **self._public_operation(op))
+                            continue
+                        except Exception as hold_error:
+                            error = RuntimeError(f"{error}; HOLD unconfirmed: {hold_error}")
+                    self.fault = str(error)
                     try:
                         self._hold_locked(self.fault, latch=True)
                     except Exception as hold_error:
@@ -661,15 +846,40 @@ class WorkshopService:
     def close(self):
         if self.closed:
             return
-        self.closed = True
         self.done.set()
+        self.planning_generation.value += 1
+        errors = []
         for thread in (self.worker, self.camera_thread):
             if thread is not None:
-                thread.join(timeout=5)
-                if thread.is_alive():
-                    raise RuntimeError(f"{thread.name} did not exit")
+                try:
+                    thread.join(timeout=5)
+                    if thread.is_alive():
+                        errors.append(f"{thread.name} did not exit")
+                except Exception as error:
+                    errors.append(f"{thread.name} join failed: {error}")
+        # Always close the robot even if another worker failed to join. The
+        # offline planner must not delay the hardware owner's HOLD/close path.
         if self.robot is not None:
-            self.robot.close()
+            try:
+                try:
+                    if self.gravity_comp and self.enabled and not self.fault:
+                        self.robot.enter_hand_guiding()
+                finally:
+                    if self.backend == "real":
+                        self.robot.close(hand_guiding=self.gravity_comp and not bool(self.fault))
+                    else:
+                        self.robot.close()
+            except Exception as error:
+                errors.append(f"Robot close failed: {error}")
+        if self.planner_pool is not None:
+            try:
+                close_planner(self.planner_pool)
+                self.planner_pool = None
+            except Exception as error:
+                errors.append(f"Planner close failed: {error}")
+        if errors:
+            raise RuntimeError("; ".join(errors))
+        self.closed = True
         if self.plant is not None:
             (self.output / "score.json").write_text(
                 json.dumps(self.plant.evaluate(), indent=2) + "\n"

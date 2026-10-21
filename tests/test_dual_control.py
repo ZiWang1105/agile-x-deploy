@@ -1,7 +1,9 @@
 """Dual-arm protocol and actual IPC/official-IK checks; no physical CAN access."""
 
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 from dataclasses import replace
+import json
+from pathlib import Path
 import struct
 import time
 import unittest
@@ -19,7 +21,7 @@ from agilex_deploy.interactive import (
     toggle_gripper,
     viewer_targets,
 )
-from agilex_deploy.model import Kinematics, initial_positions
+from agilex_deploy.model import ROOT, Kinematics, initial_positions
 from agilex_deploy.motion_limits import JointLimits
 
 
@@ -35,6 +37,10 @@ class BusPlant:
         self.ignore_enable = False
         self.gripper_fault = False
         self.channels = {s: s for s in SIDES}
+        self.angle_sources = dict.fromkeys(SIDES, "follower")
+        self.device_modes = dict.fromkeys(SIDES, "follower")
+        self.ctrl_modes = dict.fromkeys(SIDES, 1)
+        self.ignore_mode = False
 
     def snapshot(self):
         now = time.monotonic()
@@ -54,10 +60,14 @@ class BusPlant:
             tuple(self.enabled),
             now,
             velocities=(0.0,) * 14,
-            arm_status=(bytes([1, 0, 1]) + bytes(5),) * 2,
+            arm_status=tuple(bytes([self.ctrl_modes[s], 0, 1]) + bytes(5) for s in SIDES),
             status_timestamp_s=now,
             gripper_feedback=grippers,
+            angle_sources=tuple(self.device_modes[s] for s in SIDES),
         )
+
+    def set_angle_source(self, side, source, since):
+        self.angle_sources[side] = source
 
     def reader(self, *args, **kwargs):
         self.readers += 1
@@ -80,6 +90,9 @@ class BusPlant:
             def setblocking(self, *args):
                 pass
 
+            def settimeout(self, *args):
+                pass
+
             def bind(self, address):
                 self.channel = address[0]
 
@@ -91,6 +104,10 @@ class BusPlant:
                 if plant.fail_channel == self.channel:
                     raise OSError("injected bus failure")
                 plant.frames.append((self.channel, cid, data))
+                if cid == 0x151 and not plant.ignore_mode:
+                    plant.ctrl_modes[self.channel] = data[0]
+                if cid == 0x470 and not plant.ignore_mode:
+                    plant.device_modes[self.channel] = "leader" if data[0] == 0xFA else "follower"
                 if cid == 0x471 and not plant.ignore_enable:
                     plant.enabled[SIDES.index(self.channel) * 7 + data[0] - 1] = (
                         0x40 if data[1] == 2 else 0
@@ -101,10 +118,12 @@ class BusPlant:
 
 
 @contextmanager
-def fake_hardware():
-    plant = BusPlant()
+def fake_hardware(plant=None, *, allow_simulated_enable=True):
+    plant = plant if plant is not None else BusPlant()
 
     def limits(channel, model):
+        if hasattr(plant, "motion_limits"):
+            return plant.motion_limits(channel, model)
         return JointLimits(
             model, np.full(7, 1.0 if channel == "left" else 2.0), np.full(7, 2.5)
         )
@@ -127,13 +146,32 @@ def fake_hardware():
         ),
         patch("agilex_deploy.nero_transport.socket.socket", side_effect=plant.socket),
     ):
-        transport = DualNeroTransport(gripper_control=True)
-        try:
-            yield transport, plant
-        finally:
-            plant.fail_channel = None
-            plant.gripper_fault = False
-            transport.close()
+        with ExitStack() as stack:
+            # Offline firmware tests have their own commissioning evidence.
+            # Never depend on, or modify, this desktop's physical qualification.
+            read_text = Path.read_text
+            def fixture_read_text(path, *args, **kwargs):
+                if path == ROOT / "configs/commissioning.json":
+                    return json.dumps({
+                        "mounting_and_support_confirmed_by_user": True,
+                        "controller_mounting_configuration_verified": True,
+                        "static_model_posture": {"confirmed_by_user": True},
+                    })
+                return read_text(path, *args, **kwargs)
+            stack.enter_context(patch.object(Path, "read_text", fixture_read_text))
+            # This bypass exists only inside a fixture with all CAN I/O mocked.
+            if allow_simulated_enable:
+                for module in ("nero_transport", "dual_transport"):
+                    stack.enter_context(patch("agilex_deploy." + module + ".require_qualified_enable"))
+                    stack.enter_context(patch("agilex_deploy." + module + ".require_qualified_hand_guiding"))
+                stack.enter_context(patch("agilex_deploy.hardware_session.require_qualified_hand_guiding"))
+            transport = DualNeroTransport(gripper_control=True)
+            try:
+                yield transport, plant
+            finally:
+                plant.fail_channel = None
+                plant.gripper_fault = False
+                transport.close()
 
 
 class DualProtocolTests(unittest.TestCase):

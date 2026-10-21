@@ -37,7 +37,8 @@ class DisableTests(unittest.TestCase):
         class Reader:
             channels = {"left": "left", "right": "right"}
             def read(self, **_):
-                return SimpleNamespace(driver_status=tuple(states), driver_timestamp_s=time.monotonic())
+                return SimpleNamespace(driver_status=tuple(states), driver_timestamp_s=time.monotonic(),
+                                       angle_sources=("follower", "follower"))
 
         with patch("agilex_deploy.hardware_power.socket.socket", side_effect=lambda *_: Writer()):
             result = _disable_and_verify(Reader())
@@ -51,7 +52,8 @@ class DisableTests(unittest.TestCase):
             writer.assert_not_called()
 
     def test_no_acknowledgement_never_reports_success(self):
-        reader = SimpleNamespace(read=lambda **_: SimpleNamespace(driver_status=(0x40,)*14),
+        reader = SimpleNamespace(read=lambda **_: SimpleNamespace(driver_status=(0x40,)*14,
+                                 angle_sources=("follower", "follower")),
                                  channels={"left": "left", "right": "right"})
         with patch("agilex_deploy.hardware_power.socket.socket"), patch(
                 "agilex_deploy.hardware_power.time.monotonic", side_effect=[0., 3.]):

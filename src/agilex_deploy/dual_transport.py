@@ -13,6 +13,7 @@ import numpy as np
 
 from .contract import Action, ArmTarget, SIDES
 from .nero_transport import MotionGuard, NeroTransport, position_frames
+from .hardware_interlock import require_qualified_enable, require_qualified_hand_guiding
 
 
 def selected_sides(side):
@@ -101,7 +102,8 @@ class DualNeroTransport:
             snapshot = self._snapshot()
             samples = [self.endpoints[s].read_encoders(snapshot) for s in SIDES]
             return replace(
-                samples[0], grippers=tuple(samples[i].grippers[i] for i in range(2))
+                samples[0], grippers=tuple(samples[i].grippers[i] for i in range(2)),
+                gripper_feedback=tuple(samples[i].gripper_feedback[i] for i in range(2))
             )
         except Exception as error:
             if self.armed:
@@ -117,6 +119,8 @@ class DualNeroTransport:
         return RuntimeError(self.fault)
 
     def arm(self):
+        # Check both disabled controllers before preparing either CAN writer.
+        require_qualified_enable(self._snapshot(.03), can_mode_sides=())
         if self.armed or self.fault:
             raise RuntimeError(self.fault or "Arming is one-shot")
         try:
@@ -125,16 +129,26 @@ class DualNeroTransport:
             self.guard = DualMotionGuard(
                 {s: e.guard for s, e in self.endpoints.items()}
             )
+            adopting = [e.initial_hand_guiding for e in self.endpoints.values()]
+            if any(adopting):
+                if not all(adopting):
+                    raise RuntimeError("Both arms must be disabled or both in hand-guiding before paired enable")
+                for endpoint in self.endpoints.values():
+                    endpoint.armed = True
+                self.armed = True
+                self.read_encoders()
+                return
             # Refresh and seed BOTH controllers after potentially slow readbacks.
             sample = self.read_encoders()
+            require_qualified_enable(self.endpoints["left"].last)
             if any(v & 0x40 for v in self.endpoints["left"].last.driver_status):
                 raise RuntimeError("Motor enable changed during paired preparation")
             if max(abs(v) for v in sample.velocities) > 0.02:
                 raise RuntimeError("Arming requires stationary arms")
             for endpoint in self.endpoints.values():
                 endpoint.guard.hold(sample.positions)
-                endpoint.last_command = np.asarray(sample.positions[endpoint.indices])
-                endpoint._send(position_frames(endpoint.last_command))
+                endpoint.last_command = endpoint.guard.previous[endpoint.indices].copy()
+                endpoint._send(position_frames(endpoint.last_command, endpoint.guard.motion_limits.position))
             for joint in range(1, 8):
                 for endpoint in self.endpoints.values():
                     endpoint._send([(0x471, bytes([joint, 2]) + bytes(6))])
@@ -150,7 +164,7 @@ class DualNeroTransport:
                 if any(v & ~0x40 for v in snapshot.driver_status):
                     raise RuntimeError("Driver fault during paired arming")
                 for endpoint in self.endpoints.values():
-                    endpoint._send(position_frames(endpoint.last_command))
+                    endpoint._send(position_frames(endpoint.last_command, endpoint.guard.motion_limits.position))
                 if all(v & 0x40 for v in snapshot.driver_status) and all(
                     status[:3] == bytes([1, 0, 1]) and not any(status[6:8])
                     for status in snapshot.arm_status
@@ -178,6 +192,54 @@ class DualNeroTransport:
         for endpoint in self.endpoints.values():
             endpoint.activate_gripper(action)
 
+    @property
+    def control_mode(self):
+        modes = {getattr(e, "control_mode", "follower") for e in self.endpoints.values()}
+        return next(iter(modes)) if len(modes) == 1 else "transition"
+
+    def enter_hand_guiding(self):
+        require_qualified_hand_guiding()
+        if not self.armed:
+            return
+        if self.fault:
+            raise RuntimeError(self.fault)
+        if self.control_mode == "hand_guiding":
+            self.read_encoders()
+            return
+        try:
+            # Stop both arms before changing either controller's mode.
+            self.read_encoders()
+            self.hold(preserve_grippers=True)
+            for endpoint in self.endpoints.values():
+                endpoint._stationary_sample(holding=True)
+            # Issue both requests before waiting for either acknowledgement.
+            # CAN buses are not atomic: write failures still latch explicitly.
+            requests = {s: e.request_hand_guiding() for s, e in self.endpoints.items()}
+            for side, endpoint in self.endpoints.items():
+                endpoint.confirm_hand_guiding(requests[side])
+            self.read_encoders()
+        except Exception as error:
+            raise self._fail(error) from error
+
+    def begin_control(self):
+        if self.fault:
+            raise RuntimeError(self.fault)
+        if self.control_mode == "follower":
+            return
+        if self.control_mode != "hand_guiding":
+            raise RuntimeError("Both arm modes must be confirmed before follower transition")
+        try:
+            for endpoint in self.endpoints.values():
+                endpoint._stationary_sample(holding=False)
+            sample = self.read_encoders()
+            requests = {s: e.request_control(sample) for s, e in self.endpoints.items()}
+            for side, endpoint in self.endpoints.items():
+                endpoint.confirm_control(requests[side])
+            self.read_encoders()
+            self.hold(preserve_grippers=True)  # Refresh both guards without changing jaw commands.
+        except Exception as error:
+            raise self._fail(error) from error
+
     def send_positions(self, positions, grippers):
         if not self.armed:
             return
@@ -196,11 +258,14 @@ class DualNeroTransport:
         except BaseException as error:
             raise self._fail(error) from error
 
-    def hold(self):
+    def hold(self, *, preserve_grippers=False):
         errors = []
         for side, endpoint in self.endpoints.items():
             try:
-                endpoint.hold()
+                if preserve_grippers:
+                    endpoint.hold(preserve_grippers=True)
+                else:
+                    endpoint.hold()
             except Exception as error:
                 errors.append(f"{side}: {error}")
         if errors:

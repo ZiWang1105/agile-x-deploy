@@ -1,0 +1,72 @@
+{
+  "status": "investigated_offline_exact_physical_cause_unresolved",
+  "physical_commands_sent": 0,
+  "user_observation": "Left arm swung sideways on Enable and then resisted manual movement as if tracking a pose.",
+  "incident_log": "logs/workshop/policy_20261020_140341_55d78bfc/events.jsonl",
+  "incident_events": {
+    "time_s": 831315.776465188,
+    "event": "ready",
+    "backend": "real",
+    "task": "place",
+    "seed": 0
+  },
+  "findings": [
+    {
+      "status": "confirmed_in_current_source",
+      "finding": "Real Enable first arms joint-position control, holds, then requests hand-guiding; simulation Enable skips real motor-enable sequencing."
+    },
+    {
+      "status": "confirmed_in_current_source",
+      "finding": "The policy callback starts only after successful service enable. The reported arm/leader exception occurred before that callback."
+    },
+    {
+      "status": "confirmed_in_installed_sdk_and_offline_encoding",
+      "finding": "Leader method emits 0x151 01ff640000000200 then 0x470 fa00000000000000. These contain no joint-position, homing, motor-disable or explicit mounting-change command."
+    },
+    {
+      "status": "confirmed_documentation_gap",
+      "finding": "Official SDK says commands do not take effect while disabled. Production sends position seeds before enable; tests accept seeds while disabled. Firmware buffering and target-latching semantics are not established."
+    },
+    {
+      "status": "confirmed_missing_measurement",
+      "finding": "Mounting configuration records generic side mounting, not an independently measured left/right mounting setting."
+    },
+    {
+      "status": "confirmed_test_limitation",
+      "finding": "Leader feedback packets demonstrate a protocol stream, not absence of stiffness or accurate gravity compensation."
+    },
+    {
+      "status": "hypothesis_not_proven",
+      "finding": "Unintended position control during enable or leader transition fits sideways movement followed by stiff pose holding. Old targets, unsuccessful torque-mode transition and firmware behavior remain unresolved alternatives."
+    },
+    {
+      "status": "confirmed_evidence_gap",
+      "finding": "The incident directory has no raw CAN history, joint trajectory or deployed source snapshot; current source includes subsequent fixes."
+    }
+  ],
+  "validation": {
+    "firmware_protocol_tests": 8,
+    "firmware_protocol_tests_passed": true,
+    "sensitivity_cases": 5,
+    "physical_incident_reproduced": false,
+    "physical_root_cause_established": false,
+    "real_deployment_qualified": false
+  },
+  "next_required_evidence": [
+    "Timestamped host TX and controller RX including mode, enable and position frames.",
+    "Joint angles through the enable/transition/error interval, paired with the observed motion.",
+    "Controller configuration and official firmware behavior for accepted targets and zero-force mode; exact mounting and tool/load setup."
+  ],
+  "source_sha256": {
+    "src/agilex_deploy/hardware_session.py": "4829b391c648133f32fddc2a49b756b304be81a68023c979f97c6307b50c233b",
+    "src/agilex_deploy/dual_transport.py": "f441ef51e0a33c841141b0cb6036898df775aff7a3a5cf32800d155bd92f58f0",
+    "src/agilex_deploy/nero_transport.py": "c57308552319a3da695c14969903063b4a1147ff146d764a99abd2ca73e0a9f8",
+    "src/agilex_deploy/hand_guiding.py": "1fe75e3d578bda3ca33ca4dba00c362386b73cc51d479a3817bc0df23e34733a",
+    "src/agilex_deploy/can_feedback.py": "d583f717ea63abc89a2972712bcac0dd504b17a2abbe1ef8c3a741d0cdfd124c",
+    "src/agilex_deploy/workshop_service.py": "9115cc58c93b92a13ebfac489d2f29f09fd36e7ae8d7cd70a0c30b145f45155c",
+    "src/agilex_deploy/policy_launcher.py": "18e2420fd2c39cff69bd4e3bbd9cf18beb9dd24198f74c1af387cdb1a31ce332",
+    "tests/nero_firmware_sim.py": "16ace3f38b6686a087756226c36351c820fcc2b9c9dc69beee74059b3416775f",
+    "scripts/investigate_leader_swing.py": "17fd3ccf3384da7a1da79343d1007dd43d4532bc3510569da618b6882398134e"
+  },
+  "official_reference": "https://github.com/agilexrobotics/pyAgxArm/blob/master/docs/nero/nero_api.md#leader-follower-arm"
+}

@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-19",
+  "physical_motion_executed": false,
+  "trials": [
+    {
+      "success": true,
+      "task": "place",
+      "placement_dwell_s": {
+        "red": 5.920000000001977
+      },
+      "max_lift_m": {
+        "red": 0.12487258143185997
+      },
+      "distractor_unchanged": true,
+      "max_displacement_m": {
+        "red": 0.1967543681712222
+      },
+      "robot_environment_collision_frames": 0,
+      "criterion": "lift >=25 mm; full footprint in tray; released, tray-supported and stable >=1 s; distractor translation <10 mm throughout; no penetrating arm/environment contacts",
+      "policy_exit_code": 0,
+      "transport": "python",
+      "policy_type": "model",
+      "mode": "code",
+      "model": "google/gemini-3.8-flash",
+      "model_calls": 2,
+      "model_wait_s": 20.097139051998965,
+      "elapsed_s": 34.27615073497873,
+      "evidence_directory": "logs/workshop/code_visual_02"
+    },
+    {
+      "success": true,
+      "task": "place",
+      "placement_dwell_s": {
+        "red": 25.60999999996197
+      },
+      "max_lift_m": {
+        "red": 0.13050584643315577
+      },
+      "distractor_unchanged": true,
+      "max_displacement_m": {
+        "red": 0.1689752991210811
+      },
+      "robot_environment_collision_frames": 0,
+      "criterion": "lift >=25 mm; full footprint in tray; released, tray-supported and stable >=1 s; distractor translation <10 mm throughout; no penetrating arm/environment contacts",
+      "policy_exit_code": 0,
+      "transport": "mcp",
+      "policy_type": "model",
+      "mode": "mcp",
+      "model": "google/gemini-3.8-flash",
+      "model_calls": 34,
+      "model_wait_s": 129.57675986143295,
+      "elapsed_s": 129.90073765895795,
+      "evidence_directory": "logs/workshop/mcp_visual_02"
+    }
+  ],
+  "browser_checks": {
+    "page_errors": [],
+    "mobile_code_no_overflow": true,
+    "mobile_mcp_no_overflow": true,
+    "model_wait_visible": true,
+    "code_and_stdout_visible": true,
+    "mcp_arguments_results_visible": true,
+    "script_injection_blocked": true,
+    "stop_latched": true
+  },
+  "notes": [
+    "Initial code trial failed from native stderr interfering with the RPC stream; corrected before successful trial.",
+    "Initial MCP trial failed with an OpenRouter gateway timeout; bounded retry handling added.",
+    "Videos capture live browser wall-clock intervals, including model waits.",
+    "Gravity-compensation mode transitions are not implemented or physically qualified by this change."
+  ],
+  "archived_evidence": "validation/workshop_visual_20261019",
+  "regression_tests": {
+    "passed": 150,
+    "duration_s": 182.491
+  }
+}

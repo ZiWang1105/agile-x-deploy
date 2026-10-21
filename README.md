@@ -1,94 +1,189 @@
-# Dual NERO control and agentic manipulation
+# AgileX dual-NERO · Workshop on Agentic Robotics
 
-This workspace assembles the supplied dual-NERO stand and runs **AgileX's official QuestArmTeleop `ArmIK` solver with NERO defaults and an explicit `w_pos=40, w_ori=4` override**. Simulation and the explicitly armed single- or dual-arm hardware adapter share the same solver, TCP definition and robot interface. The official IK path has been tested in simulation; physical motion with this solver has not been tested. Earlier left-arm hardware motion used the previous local Jacobian solver. See [official IK provenance and validation](docs/OFFICIAL_IK.md).
+Robot platform for the [Workshop on Agentic Robotics](https://agentic-robotics-workshop.github.io/)
+at CoRL 2026. This repository provides the participant code and robot APIs for
+our live demo platform.
 
-## Workshop API: Python and MCP
+Deploy **code-as-policy** and **agent-as-policy** on a fixed dual-NERO robot:
+two seven-axis arms, independently controlled grippers, and one stand-mounted
+ZED 2i RGB-D camera. There are no wrist cameras.
 
-Participants can use the same **Python SDK or 18 MCP tools** for simulation and
-physical deployment: official IK/FK, head RGB-D, joint/TCP motion, both arms,
-**independent left/right grippers**, operation feedback, and cancellation.
+Simulation and hardware expose the same Python and MCP interfaces for camera
+capture, pixel deprojection, official AgileX IK/FK, joint/TCP motion, grippers,
+and operation feedback. Select `--backend sim` or `--backend real`; participant
+policy code and tool names stay the same.
+
+**Physical status:** the organizer has confirmed both policy formats working on
+the installed robot (October 20, 2026). The results below are separately scored
+**simulator** runs, not physical benchmark scores.
+
+[Participant guide and API](docs/WORKSHOP.md) ·
+[Python SDK](src/agilex_deploy/workshop_client.py) ·
+[MCP tools](src/agilex_deploy/workshop_mcp.py) ·
+[IK and motion planning](docs/MOTION_PLANNING.md)
+
+## Simulator results
+
+Both demonstrations use live OpenRouter model `google/gemini-3.8-flash`, the
+head RGB-D camera, measured robot feedback, and simulated finger/object contacts.
+Policies receive no simulator object coordinates or scoring state. Each run
+picks up the red cube with the left arm, places it in the green tray, releases
+it, and retracts. These are model-driven runs, not the scripted RGB-D baseline.
+
+### Code-as-policy: generated Python
+
+The model writes Python, the host executes it through `RobotClient`, and the
+model inspects execution results and fresh images before finishing.
+
+![Code-as-policy: generated Python picks up the red cube and releases it in the green tray in simulation](previews/workshop_code_policy.gif)
+
+[Full-resolution video](previews/workshop_code_policy.mp4) ·
+[Runner and SDK prompt](examples/workshop/generated_code_policy.py)
+
+### Agent-as-policy: MCP tool calls
+
+The model calls MCP tools for perception, motion, independent gripper control,
+and measured operation completion.
+
+![Agent-as-policy: MCP tool calls pick up the red cube and release it in the green tray in simulation](previews/workshop_mcp_policy.gif)
+
+[Full-resolution video](previews/workshop_mcp_policy.mp4) ·
+[Runner and tool prompt](examples/workshop/agent_policy.py)
+
+| Independent simulator evaluation | Generated Python | MCP agent |
+| --- | ---: | ---: |
+| Placement success | Pass | Pass |
+| Maximum cube lift | 125.9 mm | 126.1 mm |
+| Stable tray support at scoring | 3.46 s | 13.69 s |
+| Scored robot/environment collision frames | 0 | 0 |
+
+GIFs preserve the entire recorded trajectory at **1× simulation-time playback**,
+including stationary periods while the model responds. The external view is
+for observers; the policy sees the head camera. These are two successful trials,
+not a success-rate estimate. [Metrics and video provenance](previews/workshop_policy_results.json).
+
+## Participant quick start
+
+On the prepared [workshop](https://agentic-robotics-workshop.github.io/) desktop, use its existing `.venv-official` environment.
+For a fresh **Linux x86_64** checkout:
 
 ```bash
-uv pip install --python .venv-official/bin/python -r requirements-workshop.txt
-./scripts/run_workshop.sh --backend sim --task place --auto-start-sim
-# Second terminal:
-.venv-official/bin/python examples/workshop/code_policy.py --config logs/workshop/client.json
+git clone https://github.com/ZiWang1105/agile-x-deploy.git agilex-deploy
+cd agilex-deploy
+./scripts/setup_official_ik.sh
+./scripts/setup_gripper.sh
+.venv-official/bin/python -m pip install -r requirements-agent.txt -r requirements-workshop.txt
 ```
 
-Open **http://127.0.0.1:8780**. Tasks: `place`, `select`, and `sort`.
-[Workshop plan, participant API, MCP setup, and physical rollout](docs/WORKSHOP.md).
+These setup commands install dependencies and build models; they do not enable
+the robot. Generated Python execution requires Linux Landlock ABI ≥3 and
+libseccomp; see [execution isolation](docs/WORKSHOP.md#execute-model-generated-python).
 
-The simulator passed placement, distractor-preserving selection, and two-arm
-sorting with the RGB-D baseline. A live model-driven MCP policy also placed the
-cube, lifting it **121.4 mm** before release. The full regression suite passed
-**143 tests**. The real adapter is implemented; physical workshop tasks and
-camera/tool calibration still require qualification. No real motion was run
-for this validation.
+Create `openrouter_key.txt` **inside the repository**, containing only your
+OpenRouter API key, then run `chmod 600 openrouter_key.txt`. This file is ignored
+by Git; never include it in a participant handoff or commit. `--key-file PATH`
+overrides the default location.
 
-[Validation results](previews/workshop_validation.json).
-
-![Workshop dashboard with head camera, simulator view, independent arm/gripper feedback, and operation events](previews/workshop_dashboard.png)
-
-## Agentic cube pickup
-
-The OpenRouter policy now picks up a free cube using rendered RGB-D, measured
-robot state, model-selected pixel grounding, official NERO IK, and physical
-finger contacts. The final seven-call run lifted the cube **152.2 mm** and retained
-it for **32.6 seconds**, with no arm/environment collisions. The policy received
-no simulator object coordinates or contact truth. The same policy and sensor/
-action contract are wired to the real NERO/ZED adapter.
-
-[Watch the complete 59-second validation video](previews/agent_cube_pickup.mp4).
-[Validation report](previews/agent_policy_validation.json) ·
-[Archived sensor/API evidence](validation/agent_cube_20261015) ·
-[Setup, architecture and physical deployment](docs/AGENT_POLICY.md).
+Run **one** of these commands from the repository root:
 
 ```bash
-uv pip install --python .venv-official/bin/python -r requirements-agent.txt
-./scripts/run_agent.sh --backend sim --max-calls 16 --video \
-  --prompt 'Pick up the red cube, lift it at least 10 cm, and hold it for at least 10 seconds.'
-./scripts/run_agent.sh --backend real --side both  # Read-only RGB-D/robot preflight.
+# Code-as-policy: the model generates executable Python using the SDK.
+.venv-official/bin/python examples/workshop/generated_code_policy.py --backend sim \
+  --prompt 'Put the red cube in the green tray using the left arm, release it, and retract.'
 ```
-
-Open **http://127.0.0.1:8770**, edit the task, and click **Start simulation**.
-The live dashboard shows the simulator, the fixed head-camera view, the latest
-policy input image, decisions, execution feedback, and results. **Stop / HOLD**
-ends policy commands, including decisions that return after Stop. **Close session**
-exits after cleanup. Use `--no-web` to run immediately without the dashboard.
-The physical preflight command is a separate session; close the simulator first
-or choose another `--port`.
-
-For the **real robot dashboard**, close any existing agent session, then run:
 
 ```bash
-./scripts/run_agent.sh --backend real --side both --execute-real --camera-serial 35330610 \
-  --prompt 'Pick up the cube using the left arm and hold it above the table.'
+# Agent-as-policy: the model calls MCP tools.
+.venv-official/bin/python examples/workshop/agent_policy.py --backend sim \
+  --prompt 'Put the red cube in the green tray using the left arm, release it, and retract.'
 ```
 
-At **http://127.0.0.1:8770**, the **PHYSICAL ROBOT** page streams the real ZED and
-measured arm/gripper feedback. It stays unarmed until **Start real policy** is
-clicked. That button enables the selected physical arm and runs the task.
-Camera selection verifies the
-serial directly on the video device; the live panel displays its serial and path. Its calibration remains a
-candidate; autonomous physical pickup has not been validated.
+Each command starts the service and opens the dashboard. Review the camera and
+prompt, then click **Enable & start policy**. No separate service or browser
+command is needed. The page shows live camera/robot feedback, generated Python
+or MCP calls, execution output, and model-wait timing.
 
-The external key defaults to `~/projects/openrouter_key.txt`. The full suite
-passed 130 tests, including dashboard authentication, cancellation, camera identity,
-paired arm/gripper control, and the combined gripper-opening command. Physical read-only preflight passed; autonomous physical
-grasping has not been executed. The physical owner supports both arms in one session; camera/tool calibration
-remains provisional. Paired physical motion has not yet been qualified.
+Both runners default to **100 model calls per prompt**. Use `--model` and
+`--max-calls` to override. After a round, submit another prompt in the same
+website; each round gets a fresh budget and fresh observations. Follow-up rounds
+do not reset the robot or grippers. **STOP** ends motion and latches the session;
+a new prompt cannot clear it. **Close session** or Ctrl-C exits.
 
-The policy uses only one stand-mounted head RGB-D view (ZED 2i on hardware),
-with no wrist cameras. `--prompt` / `--instruction` supplies the task. The agent
-scene now removes the source URDF's wrist-camera assemblies; the archived video
-and pickup metrics above predate this geometry correction. Those CAD parts were
-never additional policy camera feeds.
+The dashboard defaults to port **8780**. Close a previous session first, or use
+`--port 0` for an available port. `--task place|select|sort` chooses the simulator
+layout; `--prompt` supplies the policy's instruction.
 
-## Historical demo (previous IK)
+| Simulator task | Objective |
+| --- | --- |
+| `place` | Put the red cube in the green tray. |
+| `select` | Put the blue cube in the green tray without moving the red cube. |
+| `sort` | Use both arms to place the colored cubes in their corresponding trays. |
 
-![Dual NERO simulation demonstrating dual-arm translation and rotation, independent gripper control, HOLD, and resume](previews/dual_nero_ik_validation.gif)
+## Write your own policy
 
-This existing GIF/MP4 predates the official IK migration and uses the old TCP and solver. It is not validation of the current solver. 32-second simulation playback at 1× speed, with live TCP error readouts. Scripted targets use the same robot API as the interactive viewer; this is not a mouse recording. Contacts are disabled. [Watch the full-resolution MP4](previews/dual_nero_ik_validation.mp4).
+The [Python API guide](docs/WORKSHOP.md#python-code-as-policy) documents
+`observe`, `capture`, `deproject`, `ik`, `fk`, `move_tcp`, `move_joints`,
+`move_both`, `follow_waypoints`, `gripper_open`, `gripper_close`, and `hold`.
+Motion and gripper commands return operations; wait for a measured terminal
+result before the next command. Left and right grippers are independent.
+
+Generated Python defines `run(robot)`; the host provides an already claimed
+client. The agent's [SDK instructions](examples/workshop/generated_code_policy.py)
+and [MCP instructions](examples/workshop/agent_policy.py) are in the examples.
+For your own agent framework, use the [MCP connection guide](docs/WORKSHOP.md#mcp-agent-as-policy)
+and the same [tool definitions](src/agilex_deploy/workshop_mcp.py).
+
+With an organizer-managed service, use `--config PATH` to attach either runner
+instead of launching another service. Do not combine `--config` and `--backend`.
+The guide also includes a [scripted Python example](examples/workshop/code_policy.py)
+for learning the API without a model request.
+
+## Run on the physical robot
+
+Use the same command with **`--backend real`** and a prompt describing the actual
+objects. The physical robot is not reset by `--task`. The organizer prepares the
+objects, verifies the camera/arm mapping, and enables the session.
+
+```bash
+.venv-official/bin/python examples/workshop/generated_code_policy.py --backend real \
+  --prompt 'Pick up the orange using the left arm, lift it 10 cm, and hold for 10 seconds.'
+```
+
+Replace `generated_code_policy.py` with `agent_policy.py` for MCP. Close other
+robot controllers and camera owners first. Both arms must start disabled;
+after USB reconnect or reboot, [activate CAN and verify feedback](#activate-can-before-real-robot-use).
+The same dashboard waits for **Enable & start policy** before enabling motors.
+
+Gravity compensation and automatic hand-guiding are **off by default**.
+Enable starts position HOLD. Policy completion, STOP, Close, and Ctrl-C retain
+holding torque; they do not disable the arms. To remove torque, close the
+controller, mechanically support **both arms**, then run:
+
+```bash
+.venv-official/bin/python -m agilex_deploy.hardware_power --arms-supported
+```
+
+To also open both jaws, add `--open-grippers`. That option temporarily enables
+one supported arm at a time in current-pose HOLD to open its gripper, then
+re-disables the arm. The gripper actuator remains enabled to hold its open target.
+Support any held object before releasing it.
+
+The shared controller uses official AgileX IK, sampled Cartesian paths, and
+controller joint limits. It does **not** plan obstacle avoidance. The simulator's
+contact model and measured hardware calibration differ; physical task setup and
+results remain the organizer's responsibility. Experimental physical
+`--gravity-comp` is blocked; [hand-guiding diagnostics](docs/HAND_GUIDING.md)
+are separate from the [workshop](https://agentic-robotics-workshop.github.io/) workflow.
+
+[Physical deployment details](docs/WORKSHOP.md#real-deployment) ·
+[Camera calibration](docs/CAMERA_CALIBRATION.md) ·
+[Official IK provenance and parameters](docs/OFFICIAL_IK.md)
+
+## Hardware utilities and development
+
+The remaining sections cover camera setup, interactive IK, CAN configuration,
+and source-model provenance. Participants can use the [workshop](https://agentic-robotics-workshop.github.io/) launchers above
+without running the separate camera-stream or interactive-IK services.
 
 ## ZED 2i live camera stream
 
@@ -142,8 +237,8 @@ If capture fails or frames become stale, image endpoints refuse stale snapshots;
 inspect `/status` and the logs, check the USB connection, then restart.
 
 Dependencies are pinned separately in `requirements-camera.txt`. The scripts
-use neither the IK environment nor robot control interfaces. Camera frames are
-not yet integrated into the robot observation API. The connected ZED 2i was
+use neither the IK environment nor robot control interfaces. This standalone UVC stream is separate from the [workshop](https://agentic-robotics-workshop.github.io/) RGB-D capture API;
+close it before a [workshop](https://agentic-robotics-workshop.github.io/) session opens the same camera. The connected ZED 2i was
 verified at approximately 30 fps with all three image views and consecutive
 decodable MJPEG frames.
 
@@ -168,7 +263,9 @@ The [physical calibration archive](calibration/2026-10-15_zed35330610/README.md)
 includes raw images, measured joints, assistant-selected landmarks and calculated
 extrinsics for ZED serial `35330610`. The latest raised sequence has 15 captures
 and 132 observations: 4.521 px all-point RMS and 7.010 px worst held-out-pose RMS.
-**These extrinsics are candidates, not validated or applied to robot control.**
+The [workshop](https://agentic-robotics-workshop.github.io/) loads `raised_probe/results_agent_v2/candidate.json` by default.
+Its camera transform is used by pixel deprojection; verify the calibration when
+the mount or physical setup changes.
 The archive includes earlier results, annotation corrections and reproduction
 instructions. The [camera mount design](hardware/zed2i_mount/README.txt) includes
 printable STL, editable STEP and installation illustrations.
@@ -195,6 +292,48 @@ Clone with `git clone https://github.com/ZiWang1105/agile-x-deploy.git agilex-de
 Red spheres/axes are targets; small green markers are encoder-derived TCPs. The display reports position/orientation error and runtime state. The renderer has its own model; dragging robot geometry or using native Reset cannot reset or force the simulated plant. Native Reset requests HOLD.
 
 The CLI uses the active desktop's `DISPLAY`. On this machine, `DISPLAY=:1 ./scripts/run_interactive.sh` was tested successfully. Prefer the display variable supplied by your desktop session. The command stays in the foreground; no server or detached process is installed.
+
+## Activate CAN before real robot use
+
+After rebooting or reconnecting the robot's USB cable, check the interfaces with
+`ip -details link show type can`. If they are DOWN, activate both at **1 Mbps**,
+the default bitrate in AgileX's installed `pyAgxArm` SDK. Close any running robot
+controller before reconfiguring CAN; the commands below briefly bring each
+interface down.
+
+```bash
+sudo ip link set can0 down
+sudo ip link set can0 type can bitrate 1000000 listen-only off
+sudo ip link set can0 up
+
+sudo ip link set can1 down
+sudo ip link set can1 type can bitrate 1000000 listen-only off
+sudo ip link set can1 up
+```
+
+These commands activate communication only; they do not enable motors or send
+arm/gripper motion commands. Normal CAN mode (`listen-only off`) permits bus
+acknowledgements and later controller commands.
+
+Verify both interfaces and then request receive-only joint feedback:
+
+```bash
+ip -details -statistics link show type can
+cd ~/projects/agilex-deploy
+.venv-official/bin/python -m agilex_deploy.can_feedback --output logs/commissioning/live_snapshot.json
+```
+
+Both interfaces should show `UP`, `bitrate 1000000`, and `can state ERROR-ACTIVE`.
+`ERROR-ACTIVE` is the normal CAN operating state, not an error report. The
+feedback command must also succeed: an UP interface alone does not establish
+that a powered arm is responding. If feedback times out, check robot power and
+USB/CAN cabling before starting a policy.
+
+The current mapping is robot-left `can1`, robot-right `can0`. Linux can renumber
+interfaces after reconnection; the application resolves arms by confirmed USB
+serials in `configs/hardware_mapping.json`. If the interfaces have different
+names, substitute the names shown by `ip` above. Activation does not persist
+across every reboot or USB reconnection.
 
 ## Live hardware mirror and IK preview
 
@@ -226,7 +365,7 @@ For full-workspace mouse control, start with both arms supported and disabled, c
 DISPLAY=:1 ./scripts/run_interactive.sh --backend real-commissioning --side both --workspace full --gripper
 ```
 
-This starts **UNARMED**. E enables both selected arms holding their current postures. Double-click either red sphere, Ctrl+right-drag to translate, and Ctrl+left-drag to rotate. Full mode removes the radius, height floor, orientation cap and joint excursion cap relative to the arming pose. Full workspace is now the default. Joint position limits, live controller speed/acceleration limits, pair-wide ownership and communication watchdogs remain. The old 0.03 rad/s, 0.1 rad/s², 5% firmware speed and arbitrary tracking-error caps are removed. It is not a collision-aware planner: the table, stand, opposite arm and other obstacles are not protected. An IK target may be unreachable even though the handle can be dragged there. Space requests HOLD; Q closes the controller and leaves motors enabled. To use the identical full-workspace controls without hardware access, replace `real-commissioning` with `commissioning-sim`.
+This starts **UNARMED**. E enables the selected arms in position HOLD by default; submitting a target starts follower control from fresh measured joints. Double-click either red sphere, Ctrl+right-drag to translate, and Ctrl+left-drag to rotate. Full mode removes the radius, height floor, orientation cap and joint excursion cap relative to the arming pose. Full workspace is now the default. Joint position limits, live controller speed/acceleration limits, pair-wide ownership and communication watchdogs remain. The old 0.03 rad/s, 0.1 rad/s², 5% firmware speed and arbitrary tracking-error caps are removed. It is not a collision-aware planner: the table, stand, opposite arm and other obstacles are not protected. An IK target may be unreachable even though the handle can be dragged there. Space requests position HOLD during tracking; Q normally holds position and closes the controller with motors enabled. Automatic hand-guiding is disabled unless `--gravity-comp` is supplied. Fault cleanup does not force a mode transition. See [optional hand-guiding](docs/HAND_GUIDING.md). To use the identical full-workspace controls without hardware access, replace `real-commissioning` with `commissioning-sim`.
 
 On **E**, the transport selects CAN joint-position mode at **100% of the controller's configured speed**, reads that selected controller's seven position/speed/acceleration limits while disabled, seeds current angles, then enables its joints. Incomplete readback prevents enable; settings from the other arm are never substituted. The speed reference respects the lower of the manual maximum and controller readback. Joint position bounds use the intersection of the supplied URDF and controller settings, without additional margins.
 
@@ -269,7 +408,8 @@ robot.hold()
 robot.close()
 ```
 
-`Action` always contains both arms: a base-frame TCP position in meters, an XYZW unit quaternion, and `gripper_open` (integer 0/1, or null to leave unchanged) per arm. `Observation` contains the 14 named arm encoders, measured velocities, normalized gripper travel, encoder-derived TCPs, acquisition timestamp, observation ID, and runtime state. Camera observations are explicitly unavailable in this release.
+`Action` always contains both arms: a base-frame TCP position in meters, an XYZW unit quaternion, and `gripper_open` (integer 0/1, or null to leave unchanged) per arm. `Observation` contains the 14 named arm encoders, measured velocities, normalized gripper travel, encoder-derived TCPs, acquisition timestamp, observation ID, and runtime state. The low-level observation does not embed image payloads; the [workshop](https://agentic-robotics-workshop.github.io/) service
+provides head RGB-D through `RobotClient.capture()` and `camera_capture`.
 
 `Robot(SimBackend())` and `Robot(RealBackend(transport))` run the exact same contract, IK, target admission, and joint-reference controller. A policy or viewer receives `RobotInterface`; it does not branch on the backend. Only the composition root selects the backend. See [the architecture and commissioning boundary](docs/INTERACTIVE_IK.md) and [a minimal agent-style policy](examples/agent_policy.py).
 
@@ -279,7 +419,9 @@ The viewer uses the shared request path and does not command joints. The simulat
 
 The controller loads the unmodified official `ArmIK` class (Pinocchio + CasADi + IPOPT) and the pinned NERO YAML. Its soft objective trades pose error against posture regularization and smoothing; submillimeter convergence is not promised. Joint targets use source position bounds and per-joint speed/acceleration limits described above. Cartesian velocity clipping and fixed tracking-error thresholds are removed; the optimization code is upstream, with `w_pos` changed from `2` to `40` and `w_ori` from `2` to `4` in `configs/ik.yaml` to reduce the persistent zero-posture bias. Official `w_reg=0.01`, `w_smooth=0.1`, joint bounds and solver settings are retained. HOLD cancels the target and captures the current position; it is a servo hold, not a physical emergency stop. Targets expire after 0.5 s without refresh. Stale feedback, bad joint ordering, controller faults, and control overruns cause a latched fault and backend HOLD.
 
-The simulator uses ideal gravity compensation. **Contacts and collision admission are not implemented.** It is suitable for free-space interactive IK, not grasp/contact validation or hardware execution. Source inertias and limits are unqualified. The TCP follows the official NERO `ee`: `[0.1755, 0, -0.0235]` meters with zero RPY relative to each `joint7` child frame. Observation schema version 3 identifies this change from the previous TCP. Recreate targets from fresh observations; do not replay old TCP targets. This is a nominal official definition, not a measured tool calibration. Top-camera orientation is preserved, and its bracket joint is fixed in the runtime model.
+The free-space interactive-IK model uses ideal gravity compensation. The
+[workshop](https://agentic-robotics-workshop.github.io/) simulator adds table, object, tray, and finger contacts for manipulation
+trials. **Collision-aware motion planning is not implemented** in either backend. Source inertias and limits are unqualified. The TCP follows the official NERO `ee`: `[0.1755, 0, -0.0235]` meters with zero RPY relative to each `joint7` child frame. Observation schema version 3 identifies this change from the previous TCP. Recreate targets from fresh observations; do not replay old TCP targets. This is a nominal official definition, not a measured tool calibration. Top-camera orientation is preserved, and its bracket joint is fixed in the runtime model.
 
 ```bash
 ./scripts/setup_camera_calibration.sh  # Image-processing dependency for calibration tests.
@@ -296,9 +438,10 @@ The automated suite covers paired 6D tracking, command limits, actuator-only mot
 
 The historical [32-second validation video](previews/dual_nero_ik_validation.mp4) shows translation, orientation tracking, independent gripper commands, HOLD during motion, and resume. Its target sequence uses the same robot API as the viewer. It is simulation-time playback, not a mouse recording. It is retained as evidence of the previous solver; use `scripts/smoke_ik.py` for current official-solver validation.
 
-The remainder documents the original geometry assembly and its provenance.
+The remainder documents the original supplied geometry, which includes camera
+CAD that differs from the installed ZED-only [workshop](https://agentic-robotics-workshop.github.io/) configuration.
 
-## Current result
+## Source assembly
 
 - The supplied `wbcd_urdf/urdf/dual_nero.xacro` already defines the complete assembly. Its mounting transforms are used unchanged.
 - The assembly contains 37 links and 36 joints: 14 arm revolute joints, 4 gripper prismatic joints, 1 camera-bracket revolute joint, and 17 fixed joints.
@@ -368,6 +511,17 @@ AgileX's [QuestArmTeleop IK implementation](https://github.com/agilexrobotics/Qu
 The [dual-NERO launch](https://github.com/agilexrobotics/QuestArmTeleop/blob/ros2/src/oculus_reader/launch/teleop_double_nero.launch.py) runs one solver per arm. It does not implement one coupled 14-axis solver with stand and inter-arm collision constraints. In the inspected IK node, optional collision detection occurs after publishing the joint target; it is not an execution-blocking collision check. A smoothing objective also does not impose hard velocity, acceleration, or jerk bounds. The launch enables hardware automatically and selects fast mode; it was inspected only and was not run.
 
 The active runtime now uses the official optimization solver directly, without starting its ROS node or launch files. Installation uses Pinocchio 3.2.0 with CasADi support. Source hashes, exact parameters, the virtual-gripper compatibility fix and validation results are documented in [OFFICIAL_IK.md](docs/OFFICIAL_IK.md).
+
+<details>
+<summary>Archived demonstration with the previous IK solver</summary>
+
+## Historical demo (previous IK)
+
+![Dual NERO simulation demonstrating dual-arm translation and rotation, independent gripper control, HOLD, and resume](previews/dual_nero_ik_validation.gif)
+
+This existing GIF/MP4 predates the official IK migration and uses the old TCP and solver. It is not validation of the current solver. 32-second simulation playback at 1× speed, with live TCP error readouts. Scripted targets use the same robot API as the interactive viewer; this is not a mouse recording. Contacts are disabled. [Watch the full-resolution MP4](previews/dual_nero_ik_validation.mp4).
+
+</details>
 
 ## Provenance
 

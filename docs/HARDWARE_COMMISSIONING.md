@@ -1,5 +1,8 @@
 # Dual NERO commissioning
 
+This guide documents the dual NERO demo platform for the
+[Workshop on Agentic Robotics](https://agentic-robotics-workshop.github.io/).
+
 ## Current solver revision
 
 The active IK is now the official AgileX solver with NERO YAML defaults and the explicit local `w_pos=40, w_ori=4` override in `configs/ik.yaml`. TCPs and observations use schema version 3. The hardware observations, motion sessions and CAN fault below are historical evidence from before this solver migration; no physical motion has been performed with the new solver. See [official IK provenance and tests](OFFICIAL_IK.md). Use `.venv-official` through `scripts/run_interactive.sh`; the old environment has no fallback solver.
@@ -73,7 +76,7 @@ Do not use `calibrate_joint()` to record a preparation pose: that API changes en
 ## Gates before connecting physical commands
 
 1. Static blue-model posture agreement is user-confirmed. Still verify joint direction through motion before qualifying full-range control. Current source limits differ slightly from the manual/SDK examples; qualify limits against the actual firmware and model revision rather than broadening them silently.
-2. Both firmware versions are confirmed as 1.21 (`v121`), and the user confirmed side mounting in both controllers' official Web UI. Still verify supported continuous joint command mode, feedback units, velocity availability, and gripper calibration. Older NERO SDK profiles force reported velocity to zero; that value must not be presented as measured velocity. The current joint-only reader intentionally does not expose velocity yet.
+2. Both firmware versions were observed as 1.21 (`v121`). Subsequent official controller screenshots show side mounting on both controllers, as detailed below; physical gravity compensation remains unverified. Still verify supported continuous joint command mode, feedback units, velocity availability, and gripper calibration. Older NERO SDK profiles force reported velocity to zero; that value must not be presented as measured velocity.
 3. The single-arm real transport now implements bounded I/O, paired feedback, explicit unsupported gripper handling, and controller-reported joint reference bounds. Its independent viewer-heartbeat watchdog is tested in a separate process, but physical HOLD behavior and controller/host/CAN failure behavior still require qualification. Disabling motors is not a substitute for HOLD because unsupported arms may descend.
 4. Calibrate the TCP and verify collision geometry. Add admission for the table, stand, self-collision, and inter-arm collisions. Current preview has no collision admission, and visually plausible IK is not permission to execute a path.
 5. Start a commissioned motion session from a fresh real joint sample; seed both the IK reference and initial command from that sample. First test one arm over a small displacement at conservative speed, then validate tracking, operator stop, command expiry, feedback loss, and process loss. Only then commission paired following and a preparation-pose trajectory.
@@ -168,7 +171,22 @@ Protocol references reviewed on 2026-10-14:
 
 The NERO user manual section 6.8.4 exposes mounting position in the controller Web UI. The model's correct geometry does not prove that this controller setting matches the physical side mounting. The SDK's NERO API does not expose the Piper-specific `set_installation_pos` method; do not assume the Piper command semantics apply. No mounting setting has been written by this project.
 
-The user confirmed both controllers are configured for side mounting in the official Web UI. This is recorded as user-provided evidence, not software readback. No additional Ethernet connection is required for that check or for the planned CAN control path. The desktop's USB-C connection exposes two working USB-CAN interfaces; the absence of a wired Ethernet link does not prevent CAN communication. No network addresses have been changed by the commissioning tools.
+The user previously reported side mounting for both controllers. On 2026-10-20,
+the user identified `http://127.0.0.1:8780/` as the page used; that is this project's
+[workshop](https://agentic-robotics-workshop.github.io/) dashboard and does not read the manufacturer's mounting setting.
+That earlier statement did not verify controller mounting configuration. Later
+official screenshots at 15:39 and 15:40 show `2-侧装` on both `agx-7ax-4t4` and
+`agx-7ax-m2t`, following the user's setting changes. The commissioning record now
+records this visual evidence and retains the earlier clarification. It is not
+software readback or proof of physical gravity compensation; the physical
+hand-guiding interlock remains in force. Ordinary position control, with gravity
+compensation off by default, is admitted only after fresh disabled-follower,
+healthy-status checks and the existing controller-limit/arming checks.
+The desktop's USB-C connection exposes two working USB-CAN interfaces; the
+absence of a wired Ethernet link does not prevent CAN communication. No network
+addresses have been changed by the commissioning tools. See
+[hand-guiding investigation](HAND_GUIDING.md) for the related manufacturer report
+and the unresolved physical Enable interlock.
 
 ## Coordinated dual-arm sessions
 

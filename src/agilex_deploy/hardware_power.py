@@ -34,7 +34,7 @@ def disable_supported_arms(mapping=ROOT / "configs/hardware_mapping.json", *, ar
 
 def _disable_and_verify(feedback):
     snapshot = feedback.read(timeout=1.)
-    if not any(v & 0x40 for v in snapshot.driver_status):
+    if all(v is not None and not v & 0x40 for v in snapshot.driver_status):
         return {"left_enabled": 0, "right_enabled": 0, "commands_sent": 0}
     sent = 0
     with ExitStack() as stack:
@@ -45,6 +45,26 @@ def _disable_and_verify(feedback):
             writer.settimeout(.02)
             writer.bind((feedback.channels[side],))
             writers[side] = writer
+        # Official disable may be ignored in leader mode. This tool already
+        # requires mechanical support; leave leader using the current measured
+        # posture before requesting disable. Normal policy stop never calls it.
+        from .hand_guiding import official_mode_frames, follower_feedback_frame
+        from .nero_transport import position_frames
+        for i, side in enumerate(SIDES):
+            if snapshot.angle_sources[i] != "leader":
+                continue
+            frames = (position_frames(snapshot.positions[i*7:i*7+7])
+                      + list(official_mode_frames("follower"))
+                      + [follower_feedback_frame()]
+                      + position_frames(snapshot.positions[i*7:i*7+7]))
+            for cid, payload in frames:
+                if writers[side].send(struct.pack("=IB3x8s", cid, 8, payload)) != 16:
+                    raise RuntimeError("Follower switch unconfirmed; keep the arms supported")
+                sent += 1
+            feedback.set_angle_source(side, "follower", time.monotonic())
+        snapshot = feedback.read(timeout=1.)
+        if any(v is None for v in snapshot.driver_status):
+            raise RuntimeError("Motor-status feedback unavailable after leader exit; disable unconfirmed")
         deadline = time.monotonic() + 2.
         last_send = 0.
         disabled_since = None
@@ -55,14 +75,14 @@ def _disable_and_verify(feedback):
                     for j, status in enumerate(snapshot.driver_status[i*7:(i+1)*7], 1):
                         if status & 0x40:
                             # Official NERO disable(j): 0x471, j=1..7, flag=1.
-                            # No broadcast/gripper index, mode switch or setpoint.
+                            # No broadcast/gripper index. Any required leader exit completed above.
                             payload = bytes([j, 1]) + bytes(6)
                             if writers[side].send(struct.pack("=IB3x8s", 0x471, 8, payload)) != 16:
                                 raise RuntimeError("Short disable write; some joints may remain enabled")
                             sent += 1
                 last_send = now
             snapshot = feedback.read(timeout=.1)
-            if any(v & 0x40 for v in snapshot.driver_status):
+            if any(v is None or v & 0x40 for v in snapshot.driver_status):
                 disabled_since = None
             elif disabled_since is None:
                 disabled_since = time.monotonic()

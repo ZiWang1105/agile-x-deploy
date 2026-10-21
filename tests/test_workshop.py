@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import json
+from pathlib import Path
 import tempfile
 import time
 import unittest
@@ -38,6 +39,31 @@ class WorkshopTests(unittest.TestCase):
             cls.server.close()
             cls.service.close()
             cls.temp.cleanup()
+
+    def test_policy_telemetry_is_authenticated_and_cannot_control_robot(self):
+        from agilex_deploy.policy_trace import PolicyTrace
+
+        config = Path(self.temp.name) / "trace-client.json"
+        config.write_text(
+            json.dumps(dict(endpoint=self.server.endpoint, token=self.server.token))
+        )
+        before = self.client.observe()["joint_positions_rad"]
+        trace = PolicyTrace(config, "code", "test-model", "test instruction")
+        trace.emit("code_generated", turn=1, code="<script>window.pwned=true</script>")
+        with urlopen(self.server.endpoint + "/state") as response:
+            state = json.load(response)
+        self.assertEqual(state["policy_events"][-1]["kind"], "code_generated")
+        self.assertNotIn(self.server.token, json.dumps(state["policy_events"]))
+        np.testing.assert_allclose(
+            before, self.client.observe()["joint_positions_rad"], atol=0.001
+        )
+        request = Request(
+            self.server.endpoint + "/telemetry",
+            data=b"{}",
+            headers={"Content-Type": "application/json"},
+        )
+        with self.assertRaises(HTTPError):
+            urlopen(request)
 
     def test_camera_has_registered_geometry_and_no_object_truth(self):
         frame = self.client.capture()
@@ -131,6 +157,17 @@ class WorkshopTests(unittest.TestCase):
         )
         self.assertEqual(self.client.gripper_close("left").wait()["state"], "succeeded")
 
+    def test_gripper_only_operation_never_reenters_arm_ik(self):
+        before = self.client.observe()["joint_positions_rad"]
+        with patch.object(
+            self.service.robot.controller.ik,
+            "solve",
+            side_effect=AssertionError("Jaw-only command invoked arm IK"),
+        ):
+            self.assertEqual(self.client.gripper_open("left").wait()["state"], "succeeded")
+            self.assertEqual(self.client.gripper_close("left").wait()["state"], "succeeded")
+        np.testing.assert_allclose(self.client.observe()["joint_positions_rad"], before, atol=.001)
+
     def test_ik_fk_are_read_only_and_return_residuals(self):
         before = self.client.observe()
         fk = self.client.fk("left", before["joint_positions_rad"][:7])
@@ -188,6 +225,9 @@ class RealAdapterContractTests(unittest.TestCase):
                 observed_calls.append((side, kwargs))
                 self.robot = Robot(SimBackend())
                 self.armed = False
+                self.limit_reads = 0
+                self.effective_limits = self.robot.kinematics.limits.copy()
+                self.effective_limits[0] = [-1., 1.]
 
             def observe(self):
                 with self.robot.lock:
@@ -199,24 +239,38 @@ class RealAdapterContractTests(unittest.TestCase):
             def arm(self):
                 self.armed = True
 
+            def motion_limits(self):
+                if not self.armed:
+                    raise RuntimeError("Motion limits require arming")
+                self.limit_reads += 1
+                return dict(position=self.effective_limits.tolist(),
+                            velocity=self.robot.controller.max_velocity.tolist(),
+                            acceleration=self.robot.controller.max_acceleration.tolist())
+
             def start(self):
                 self.robot.start()
 
             def submit_target(self, *args):
                 return self.robot.submit_target(*args)
 
-            def hold(self):
-                self.robot.hold()
+            def hold(self, *, preserve_grippers=False):
+                self.robot.hold(preserve_grippers=preserve_grippers)
 
-            def close(self):
+            def enter_hand_guiding(self):
+                self.robot.enter_hand_guiding()
+
+            def begin_control(self):
+                self.robot.begin_control()
+
+            def close(self, **kwargs):
                 self.robot.close()
 
         class Camera:
             def __init__(self, robot, *args, **kwargs):
                 self.robot = robot
 
-            def capture(self):
-                return self.robot.observe(), RGBDFrame(
+            def capture_frame(self):
+                return RGBDFrame(
                     np.zeros((100, 200, 3), np.uint8),
                     np.ones((100, 200)),
                     np.array([[100.0, 0, 100], [0, 100, 50], [0, 0, 1]]),
@@ -238,16 +292,30 @@ class RealAdapterContractTests(unittest.TestCase):
             client = RobotClient(server.endpoint, server.token)
             try:
                 client.claim()
-                self.assertEqual(observed_calls, [("both", {"gripper_control": True})])
+                self.assertEqual(observed_calls, [("both", {"gripper_control": True, "gravity_comp": False})])
                 self.assertFalse(service.robot.armed)
                 self.assertEqual(client.capabilities()["arms"], ["left", "right"])
                 self.assertEqual(client.observe()["mode"], "unarmed")
                 self.assertIn("T_base_from_optical", client.capture())
+                # Camera publication and HTTP preview remain live while the
+                # robot-service lock is held (as during slow hardware enable).
+                from concurrent.futures import ThreadPoolExecutor
+                with ThreadPoolExecutor(max_workers=1) as pool:
+                    with service.lock:
+                        first_frame = service.frame_counter
+                        preview = pool.submit(lambda: urlopen(server.endpoint + "/camera.png", timeout=1).read())
+                        self.assertTrue(preview.result(timeout=2).startswith(b"\x89PNG"))
+                        time.sleep(.12)
+                        self.assertGreater(service.frame_counter, first_frame)
+                fresh = client.capture()
+                self.assertLessEqual(fresh["robot_camera_skew_s"], .1)
                 with self.assertRaises(APIError) as caught:
                     client.gripper_open("left")
                 self.assertEqual(caught.exception.code, "NOT_ENABLED")
                 service.enable()
                 self.assertTrue(service.robot.armed)
+                self.assertEqual(service.robot.limit_reads, 1)
+                np.testing.assert_array_equal(service.kin.limits, service.robot.effective_limits)
                 self.assertEqual(
                     client.gripper_open("left").wait()["state"], "succeeded"
                 )
@@ -255,9 +323,11 @@ class RealAdapterContractTests(unittest.TestCase):
                     client.observe()["gripper_position"][1], 0.36, delta=0.001
                 )
             finally:
-                client.close()
-                server.close()
-                service.close()
+                try:
+                    client.close()
+                finally:
+                    server.close()
+                    service.close()
 
 
 class TaskTests(unittest.TestCase):

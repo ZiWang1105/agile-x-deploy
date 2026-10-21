@@ -1,4 +1,4 @@
-"""Official AgileX IK followed by shared joint speed/acceleration execution.
+"""Cartesian path tracking, official IK, and shared joint-limit execution.
 
 Simulation and hardware use the same upstream solver and NERO parameters.
 The execution layer limits joint references; it does not certify physical
@@ -7,11 +7,12 @@ stopping, torque, contact dynamics or collision clearance.
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from .contract import SIDES, JointAction
+from .contract import SIDES, JointAction, MixedAction
+from .cartesian_path import CartesianPlanner
 from .model import CONTROL_DT
 from .official_ik import OfficialDualIK
 
-from .motion_limits import SIM_VELOCITY, SIM_ACCELERATION
+from .motion_limits import SIM_VELOCITY, SIM_ACCELERATION, bounded_hold_reference
 
 # Offline defaults only. Hardware replaces these with selected-arm live readback.
 MAX_VELOCITY = np.tile(SIM_VELOCITY, 2)
@@ -34,6 +35,7 @@ class Controller:
         self.gripper_rate = .6  # Simulated actuator reference rate; hardware overrides to None.
         self.set_motion_limits(max_velocity, max_acceleration)
         self.ik = ik if ik is not None else OfficialDualIK(kinematics, q)
+        self.planner = CartesianPlanner()
         self.hold(q, grippers)
 
     def set_motion_limits(self, velocity, acceleration):
@@ -46,8 +48,11 @@ class Controller:
     def hold(self, q, grippers):
         # HOLD intentionally overrides trajectory continuity to stop pursuing
         # the old goal; the backend still decelerates through its servos.
-        self.reference[:] = q
+        bounded = bounded_hold_reference(q, self.kinematics.limits)
+        self.reference[:] = bounded
+        self.hold_reference = bounded.copy()
         self.velocity[:] = 0
+        self.planner.reset()
         self.grippers[:] = [None if g is None else float(np.clip(g, 0, 1)) for g in grippers]
         self.kinematics.update(q, grippers)
         self.hold_poses = {side: self.kinematics.pose(side) for side in SIDES}
@@ -58,17 +63,49 @@ class Controller:
         kin.update(q, sample.grippers)
         desired = np.zeros(14)
         errors = {}
+        if isinstance(action, JointAction):
+            self.planner.reset()
         for i, side in enumerate(SIDES):
             error = pose_error(kin.pose(side), getattr(action, side).pose)
             errors[side] = (float(np.linalg.norm(error[:3])), float(np.linalg.norm(error[3:])))
             indices = slice(i * 7, (i + 1) * 7)
             target = getattr(action, side).pose
+            path_start = action.cartesian_starts[i] if isinstance(action, MixedAction) else None
+            joint_control = isinstance(action, JointAction) or (
+                isinstance(action, MixedAction) and side not in action.cartesian_arms)
+            if joint_control:
+                # A later Cartesian action must start a new path from feedback,
+                # even if its endpoint matches a path used before the joint hold.
+                self.planner.paths.pop(side, None)
             # An unchanged HOLD target must not move an inactive arm merely
             # because the official objective includes neutral-pose regularization.
-            if target == self.hold_poses[side] and not isinstance(action, JointAction):
+            if (target == self.hold_poses[side] and not joint_control
+                    and (path_start is None or path_start == target)
+                    and np.array_equal(self.reference[indices], self.hold_reference[indices])
+                    and np.all(self.velocity[indices] == 0)):
                 continue
-            goal = (np.asarray(action.joint_positions_rad)[indices] if isinstance(action, JointAction)
-                    else self.ik.solve(side, target, q[indices]))
+            # A replacement drag target starts a new Cartesian path at measured
+            # feedback. Keep reference velocity continuous through replacement;
+            # the existing joint acceleration limiter owns execution timing.
+            if joint_control:
+                waypoint = target
+            else:
+                # A nearby intermediate IK goal makes the braking law below
+                # slow down even though the Cartesian path continues. Look
+                # ahead over the current joint stopping horizon so intermediate
+                # samples are not treated as mandatory stopping points.
+                # This changes neither the joint speed nor acceleration bounds.
+                horizon = float(np.max(abs(self.velocity[indices]) / self.max_acceleration[indices]))
+                twist = kin.jacobian(side)[:, indices] @ self.velocity[indices]
+                waypoint = self.planner.target(
+                    side, kin.pose(side), target,
+                    rotation_arc=(action.rotation_arcs[i]
+                                  if isinstance(action, MixedAction) else "shortest"),
+                    validated_start=path_start,
+                    linear_lookahead_m=float(np.linalg.norm(twist[:3]) * horizon),
+                    angular_lookahead_rad=float(np.linalg.norm(twist[3:]) * horizon))
+            goal = (np.asarray(action.joint_positions_rad)[indices] if joint_control
+                    else self.ik.solve(side, waypoint, q[indices]))
             delta = goal - self.reference[indices]
             # Decelerate toward the official joint solution. This is execution
             # timing, not an extra pose objective or a replacement IK solver.

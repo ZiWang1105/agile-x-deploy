@@ -1,0 +1,10 @@
+{
+  "page_errors": [],
+  "mobile_code_no_overflow": true,
+  "mobile_mcp_no_overflow": true,
+  "model_wait_visible": true,
+  "code_and_stdout_visible": true,
+  "mcp_arguments_results_visible": true,
+  "script_injection_blocked": true,
+  "stop_latched": true
+}

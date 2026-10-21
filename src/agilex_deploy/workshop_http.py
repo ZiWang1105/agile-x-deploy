@@ -117,6 +117,8 @@ class WorkshopHTTP:
         self.service = service
         self.token = secrets.token_urlsafe(32)
         self.operator_token = secrets.token_urlsafe(32)
+        self.launcher = None
+        self.close_requested = threading.Event()
         owner = self
         template = Path(__file__).with_name("workshop.html").read_text()
 
@@ -165,6 +167,7 @@ class WorkshopHTTP:
                                     task=service.task,
                                     instruction=service.instruction,
                                     enabled=service.enabled,
+                                    gravity_comp=service.gravity_comp,
                                     stopped=service.stopped,
                                     owner=service.owner,
                                     fault=service.fault,
@@ -176,11 +179,13 @@ class WorkshopHTTP:
                                         ]
                                     ],
                                     events=service.events[-15:],
+                                    policy_events=service.policy_events[-200:],
+                                    launcher=owner.launcher,
                                 )
                             )
                     if path == "/camera.png":
                         return self.send(
-                            base64.b64decode(service.capture()["rgb_png_base64"]),
+                            base64.b64decode(service.capture(retain=False)["rgb_png_base64"]),
                             mime="image/png",
                         )
                     if (
@@ -214,13 +219,40 @@ class WorkshopHTTP:
                         ):
                             return self.send({"error": "Invalid operator token"}, 403)
                         if self.path == "/operator/enable":
+                            if owner.launcher and owner.launcher["state"] != "waiting_for_enable":
+                                raise ValueError("This policy run has already started or ended")
                             service.enable()
                         elif self.path == "/operator/stop":
                             service.operator_stop()
+                        elif self.path == "/operator/prompt":
+                            prompt = body.get("prompt") if isinstance(body, dict) else None
+                            if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 8000:
+                                raise ValueError("Prompt must contain 1 to 8000 characters")
+                            with service.lock:
+                                if not owner.launcher:
+                                    raise ValueError("Launch an MCP or code policy to submit prompts")
+                                if service.stopped or service.fault or owner.close_requested.is_set():
+                                    raise WorkshopError("STOPPED", service.fault or "Session is stopped; prompts cannot reset it")
+                                state = owner.launcher["state"]
+                                if state not in ("waiting_for_enable", "finished", "failed"):
+                                    raise WorkshopError("BUSY", "Wait for the current policy round to finish")
+                                if state != "waiting_for_enable" and (
+                                    not service.enabled or service.owner or service.active
+                                ):
+                                    raise WorkshopError("BUSY", "The enabled session must be idle before another prompt")
+                                service.instruction = prompt.strip()
+                                owner.launcher.update(prompt=prompt.strip(), error=None,
+                                                      state="waiting_for_enable" if state == "waiting_for_enable" else "queued")
+                                service.event("policy_prompt", prompt=prompt.strip())
+                        elif self.path == "/operator/close" and owner.launcher is not None:
+                            try:
+                                service.operator_stop()
+                            finally:
+                                owner.close_requested.set()
                         else:
                             raise ValueError("Unknown operator action")
                         return self.send({"ok": True})
-                    if self.path != "/api":
+                    if self.path not in ("/api", "/telemetry"):
                         raise ValueError("Unknown path")
                     if not hmac.compare_digest(
                         self.headers.get("Authorization", ""), "Bearer " + owner.token
@@ -234,6 +266,30 @@ class WorkshopHTTP:
                             },
                             403,
                         )
+                    if self.path == "/telemetry":
+                        from .policy_trace import scrub
+
+                        if (
+                            not isinstance(body, dict)
+                            or body.get("mode") not in ("code", "mcp")
+                            or not isinstance(body.get("kind"), str)
+                            or not isinstance(body.get("run_id"), str)
+                        ):
+                            raise ValueError("Invalid policy event")
+                        with service.lock:
+                            service.policy_event_sequence += 1
+                            event = scrub(body)
+                            event.update(
+                                sequence=service.policy_event_sequence,
+                                received_at_s=time.time(),
+                            )
+                            service.policy_events.append(event)
+                            del service.policy_events[:-200]
+                            with (service.output / "policy_events.jsonl").open(
+                                "a"
+                            ) as stream:
+                                stream.write(json.dumps(event, allow_nan=False) + "\n")
+                        return self.send({"ok": True})
                     if set(body) != {"method", "params", "client_id"} or not isinstance(
                         body["params"], dict
                     ):

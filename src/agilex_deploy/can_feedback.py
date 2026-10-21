@@ -20,6 +20,7 @@ from .contract import JOINT_NAMES, SIDES
 from .model import ROOT
 
 ANGLE_IDS = (0x2A5, 0x2A6, 0x2A7, 0x2A9)
+LEADER_ANGLE_IDS = (0x155, 0x156, 0x157, 0x170)  # Official NERO >=1.12.
 DRIVER_IDS = tuple(range(0x261, 0x268))
 MOTOR_IDS = tuple(range(0x251, 0x258))
 MAX_AGE_S = .2
@@ -35,18 +36,21 @@ class JointSnapshot:
     skew_s: float
     joint_names: tuple[str, ...]
     positions: tuple[float, ...]
-    driver_status: tuple[int, ...]
-    driver_timestamp_s: float
+    driver_status: tuple[int | None, ...]
+    driver_timestamp_s: float | None
     velocities: tuple[float, ...] | None = None
     grippers: None = None
-    arm_status: tuple[bytes, bytes] | None = None
+    arm_status: tuple[bytes | None, bytes | None] | None = None
     status_timestamp_s: float | None = None
     gripper_feedback: tuple | None = None
+    angle_sources: tuple[str, str] = ("follower", "follower")
+    leader_timestamps_s: tuple[float | None, float | None] = (None, None)
+    velocity_sources: tuple[str, str] = ("motor", "motor")
 
     def validate(self, now):
         if not -.01 <= now - self.timestamp_s <= MAX_AGE_S:
             raise RuntimeError("Hardware joint feedback stale or clock invalid")
-        if not -.01 <= now - self.driver_timestamp_s <= MAX_AGE_S:
+        if self.driver_timestamp_s is not None and not -.01 <= now - self.driver_timestamp_s <= MAX_AGE_S:
             raise RuntimeError("Hardware driver feedback stale or clock invalid")
         if self.skew_s > MAX_SKEW_S:
             raise RuntimeError("Paired hardware joint feedback exceeds 30 ms skew")
@@ -59,9 +63,9 @@ class JointSnapshot:
     def report(self, limits=None):
         result = asdict(self)
         if self.arm_status is not None:
-            result["arm_status"] = [s.hex() for s in self.arm_status]
+            result["arm_status"] = [s.hex() if s is not None else None for s in self.arm_status]
         result["positions_deg"] = np.degrees(self.positions).tolist()
-        result["motor_enabled"] = [bool(v & 0x40) for v in self.driver_status]
+        result["motor_enabled"] = [bool(v & 0x40) if v is not None else None for v in self.driver_status]
         result["source"] = "physical_CAN_receive_only"
         if limits is not None:
             q = np.asarray(self.positions)
@@ -71,7 +75,7 @@ class JointSnapshot:
 
 class FeedbackAssembler:
     """Publish only when all eight angle frames have advanced across both arms."""
-    def __init__(self, motor_feedback=False, gripper_feedback=()):
+    def __init__(self, motor_feedback=False, gripper_feedback=(), discover_leaders=False):
         self.angles = {}
         self.drivers = {}
         self.dirty = set()
@@ -86,9 +90,41 @@ class FeedbackAssembler:
             raise ValueError("Invalid gripper feedback sides")
         self.grippers = {}
         self.gripper_dirty = set()
+        self.angle_sources = dict.fromkeys(SIDES, "follower")
+        self.discover_leaders = set(SIDES) if discover_leaders else set()
+        self.source_since = dict.fromkeys(SIDES, float("-inf"))
+        self.leader_timestamps = dict.fromkeys(SIDES, None)
+        self.previous_leader = {}
+
+    def set_angle_source(self, side, source, since):
+        if side not in SIDES or source not in ("leader", "follower"):
+            raise ValueError("Invalid feedback source")
+        self.angle_sources[side] = source
+        self.source_since[side] = since
+        self.discover_leaders.discard(side)
+        self.angles = {k: v for k, v in self.angles.items() if k[0] != side}
+        self.dirty = {k for k in self.dirty if k[0] != side}
+        self.motor_dirty = {k for k in self.motor_dirty if k[0] != side}
+        self.gripper_dirty.discard(side)
+        self.drivers = {k: v for k, v in self.drivers.items() if k[0] != side}
+        self.status.pop(side, None)
+        self.grippers.pop(side, None)
+        self.previous_leader.pop(side, None)
+        self.latest = None  # Never acknowledge a transition with a cached sample.
 
     def feed(self, side, can_id, data, acquired):
         if side not in SIDES or len(data) != 8:
+            return
+        if acquired < self.source_since[side]:
+            return
+        if can_id in LEADER_ANGLE_IDS:
+            self.leader_timestamps[side] = acquired
+            if side in self.discover_leaders:
+                self.set_angle_source(side, "leader", acquired)
+            if self.angle_sources[side] != "leader":
+                return
+            can_id = ANGLE_IDS[LEADER_ANGLE_IDS.index(can_id)]
+        elif can_id in ANGLE_IDS and self.angle_sources[side] == "leader":
             return
         if can_id in ANGLE_IDS:
             key = (side, can_id)
@@ -111,25 +147,55 @@ class FeedbackAssembler:
             self.gripper_dirty.add(side)
         else:
             return
-        if self.motor_feedback and (len(self.motor_dirty) != 14 or len(self.status) != 2):
+        followers = [s for s in SIDES if self.angle_sources[s] == "follower"]
+        if self.motor_feedback and (any((s, i) not in self.motor_dirty for s in followers for i in MOTOR_IDS)
+                                    or any(s not in self.status for s in followers)):
             return
-        if any(s not in self.gripper_dirty for s in self.gripper_sides):
+        if any(s not in self.gripper_dirty for s in self.gripper_sides if s in followers):
             return
-        if len(self.dirty) == 8 and len(self.drivers) == 14:
+        if len(self.dirty) == 8 and all((s, i) in self.drivers for s in followers for i in DRIVER_IDS):
             rows = [self.angles[s, i] for s in SIDES for i in ANGLE_IDS]
-            states = [self.drivers[s, i] for s in SIDES for i in DRIVER_IDS]
+            states = [self.drivers[s, i] for s in followers for i in DRIVER_IDS]
             stamps = [r[1] for r in rows]
-            motors = [self.motors[s, i] for s in SIDES for i in MOTOR_IDS] if self.motor_feedback else []
+            motors = [self.motors[s, i] for s in followers for i in MOTOR_IDS] if self.motor_feedback else []
             stamps += [t for _, t in motors]
-            stamps += [self.grippers[s].timestamp_s for s in self.gripper_sides]
+            stamps += [self.grippers[s].timestamp_s for s in self.gripper_sides if s in followers]
+            velocities = []
+            waiting = False
+            if self.motor_feedback:
+                for s in SIDES:
+                    if s in followers:
+                        velocities.extend(self.motors[s, i][0] for i in MOTOR_IDS)
+                        continue
+                    # Leader packets contain angles, not motor velocity/status.
+                    # Differentiate two fresh complete angle sets and label the
+                    # estimate; never synthesize enable, fault or jaw feedback.
+                    q = np.array([v for cid in ANGLE_IDS for v in self.angles[s, cid][0]])
+                    stamp = min(self.angles[s, cid][1] for cid in ANGLE_IDS)
+                    previous = self.previous_leader.get(s)
+                    if previous is None or stamp <= previous[1]:
+                        waiting = True
+                    else:
+                        velocities.extend((q - previous[0]) / (stamp - previous[1]))
+                    self.previous_leader[s] = (q, stamp)
+            if waiting:
+                self.dirty.clear()
+                self.motor_dirty.clear()
+                self.gripper_dirty.clear()
+                return
             self.sequence += 1
             self.latest = JointSnapshot(self.sequence, min(stamps), max(stamps) - min(stamps),
                 JOINT_NAMES, tuple(v for row, _ in rows for v in row),
-                tuple(v for v, _ in states), min(t for _, t in states),
-                velocities=tuple(v for v, _ in motors) if motors else None,
-                arm_status=tuple(self.status[s][0] for s in SIDES) if self.motor_feedback else None,
-                status_timestamp_s=min(t for _, t in self.status.values()) if self.motor_feedback else None,
-                gripper_feedback=tuple(self.grippers.get(s) for s in SIDES) if self.gripper_sides else None)
+                tuple(self.drivers[s, i][0] if s in followers else None for s in SIDES for i in DRIVER_IDS),
+                min((t for _, t in states), default=None),
+                velocities=tuple(velocities) if self.motor_feedback else None,
+                arm_status=tuple(self.status[s][0] if s in followers else None for s in SIDES) if self.motor_feedback else None,
+                status_timestamp_s=min((self.status[s][1] for s in followers), default=None) if self.motor_feedback else None,
+                gripper_feedback=tuple(self.grippers.get(s) if s in followers else None for s in SIDES) if self.gripper_sides else None,
+                angle_sources=tuple(self.angle_sources[s] for s in SIDES),
+                leader_timestamps_s=tuple(self.leader_timestamps[s] for s in SIDES),
+                velocity_sources=tuple(("motor" if s in followers else "angle_difference")
+                                       if self.motor_feedback else "unavailable" for s in SIDES))
             self.dirty.clear()
             self.motor_dirty.clear()
             self.gripper_dirty.clear()
@@ -174,7 +240,8 @@ class PassiveCanFeedback:
             from .gripper import official_codec
             official_codec()  # Import/warm up before sockets can accumulate feedback.
         self.channels = mapped_channels(mapping)
-        self.assembler = FeedbackAssembler(motor_feedback=motor_feedback, gripper_feedback=gripper_feedback)
+        self.assembler = FeedbackAssembler(motor_feedback=motor_feedback, gripper_feedback=gripper_feedback,
+                                           discover_leaders=True)
         self.sockets = {}
         self.clock_offset = time.monotonic() - time.time()
         try:
@@ -186,7 +253,7 @@ class PassiveCanFeedback:
                 sock.setsockopt(socket.SOL_SOCKET, SO_RXQ_OVFL, 1)
                 # Match standard data frames only; reject EFF/RTR flags.
                 # Error reception is disabled by SocketCAN's default ERR_FILTER.
-                ids = (*ANGLE_IDS, *DRIVER_IDS, *MOTOR_IDS, 0x2A1) if motor_feedback else (*ANGLE_IDS, *DRIVER_IDS)
+                ids = (*ANGLE_IDS, *LEADER_ANGLE_IDS, *DRIVER_IDS, *MOTOR_IDS, 0x2A1) if motor_feedback else (*ANGLE_IDS, *LEADER_ANGLE_IDS, *DRIVER_IDS)
                 if gripper_feedback:
                     ids = (*ids, 0x2A8)
                 filters = b"".join(struct.pack("=II", cid, 0xC00007FF) for cid in ids)
@@ -211,6 +278,11 @@ class PassiveCanFeedback:
                     break
                 for sock in ready:
                     frame, ancillary, flags, _ = sock.recvmsg(16, 128)
+                    # Leader feedback uses the same IDs as host position commands.
+                    # SocketCAN marks locally generated frames with MSG_DONTROUTE;
+                    # never mistake our writer's loopback for encoder feedback.
+                    if flags & socket.MSG_DONTROUTE:
+                        continue
                     if flags & (socket.MSG_TRUNC | socket.MSG_CTRUNC) or len(frame) != 16:
                         raise RuntimeError("Truncated CAN frame or acquisition metadata")
                     acquired = None
@@ -234,6 +306,9 @@ class PassiveCanFeedback:
                 if remaining <= 0:
                     raise
                 select.select(list(self.sockets), [], [], min(.01, remaining))
+
+    def set_angle_source(self, side, source, since):
+        self.assembler.set_angle_source(side, source, since)
 
     def close(self):
         for sock in self.sockets:

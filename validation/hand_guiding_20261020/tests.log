@@ -1,0 +1,173 @@
+......
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+
+Live dashboard: http://127.0.0.1:39207
+
+.{"backend": "real", "model": "google/gemini-3.8-flash", "physical_motion_requested": true, "status": "stopped", "instruction": "User task", "error": "End mock episode", "api_calls": 0, "api_cost_usd": 0}
+{"backend": "real", "model": "google/gemini-3.8-flash", "physical_motion_requested": true, "status": "stopped", "error": "Cancelled before Start", "api_calls": 0, "api_cost_usd": 0}
+{"backend": "real", "model": "google/gemini-3.8-flash", "physical_motion_requested": true, "status": "failed", "error": "RuntimeError: ZED acquisition is stale", "api_calls": 0, "api_cost_usd": 0}
+....Waypoint 2: selected offset [-0.06, -0.06, 0.0] m, rotation [0.0, 0.0, 0.0] degrees after 2 attempts
+Waypoint 3: selected offset [-0.06, 0.06, 0.0] m, rotation [0.0, 0.0, 0.0] degrees after 2 attempts
+Waypoint 7: selected offset [0.0075, 0.0075, 0.0075] m, rotation [0.0, -3.7499999999999996, 0.0] degrees after 5 attempts
+...................................left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+..left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+.left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+.left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+.left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+.left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+.left controller limits: speed=[3.14, 3.14, 3.14, 3.14, 3.92, 3.92, 3.92] rad/s, acceleration=[2.0, 2.0, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+.left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+.
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+.
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+.
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+........
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+........controller_state: {"mode": "unarmed", "reason": "left selected; E enables hand-guiding; targets resume follower control", "observation_id": 7, "joint_positions_rad": [0.0, 1.2, -1.57, 1.0, 0.0, 0.0, 0.0, 0.0, 1.2, 1.57, 1.0, 0.0, 0.0, 0.0]}
+operator_arm: {"side": "left"}
+controller_state: {"mode": "hand_guiding", "reason": "enabled; hand-guiding with no arm position targets", "observation_id": 11, "joint_positions_rad": [0.0, 1.2, -1.57, 1.0, 0.0, 0.0, 0.0, 0.0, 1.2, 1.57, 1.0, 0.0, 0.0, 0.0]}
+controller_state: {"mode": "tracking", "reason": "target accepted", "observation_id": 15, "joint_positions_rad": [6.037844070809509e-07, 1.2000034617726945, -1.5699974498002705, 1.0000001814348074, 3.9407434608050034e-07, -8.113389615449905e-07, 2.9618429125926683e-08, -2.8310634537741094e-19, 1.2, 1.57, 1.0, 4.459050844198408e-19, 9.885550218124643e-20, -1.9679689214020228e-19]}
+hold: {}
+controller_state: {"mode": "hold", "reason": "operator hold", "observation_id": 28, "joint_positions_rad": [-6.795634925604538e-08, 1.2000000389393326, -1.5700000849228544, 1.000000016083802, -1.182815481115548e-07, 4.238395149281123e-10, 2.5047529269460046e-09, -1.9936193040039606e-18, 1.2, 1.57, 1.0, 1.5925933955425744e-18, 2.4098723289800443e-19, -8.915023398361687e-19]}
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+controller_state: {"mode": "unarmed", "reason": "right selected; E enables hand-guiding; targets resume follower control", "observation_id": 6, "joint_positions_rad": [0.0, 1.2, -1.57, 1.0, 0.0, 0.0, 0.0, 0.0, 1.2, 1.57, 1.0, 0.0, 0.0, 0.0]}
+operator_arm: {"side": "right"}
+controller_state: {"mode": "hand_guiding", "reason": "enabled; hand-guiding with no arm position targets", "observation_id": 9, "joint_positions_rad": [0.0, 1.2, -1.57, 1.0, 0.0, 0.0, 0.0, 0.0, 1.2, 1.57, 1.0, 0.0, 0.0, 0.0]}
+controller_state: {"mode": "tracking", "reason": "target accepted", "observation_id": 13, "joint_positions_rad": [-2.595502719934091e-19, 1.2, -1.57, 1.0, -5.677876182971642e-19, -4.881586393851376e-20, -1.3090814713088012e-19, 6.041582645212481e-07, 1.1999965380246174, 1.5700025500182713, 0.9999998207985984, 3.9362738584217686e-07, -8.109738191893647e-07, -2.7951554881363392e-08]}
+hold: {}
+controller_state: {"mode": "hold", "reason": "operator hold", "observation_id": 25, "joint_positions_rad": [-1.2644530674419836e-18, 1.2, -1.57, 1.0, -1.7071375768438954e-18, 5.271780665361904e-20, -4.430254336738338e-19, -7.928397115615669e-08, 1.1999999931498215, 1.5699999014746564, 0.9999999811681137, -1.1774223697239572e-07, 3.2454821823480717e-09, -2.9408749380774793e-09]}
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+controller_state: {"mode": "unarmed", "reason": "both selected; E enables hand-guiding; targets resume follower control", "observation_id": 6, "joint_positions_rad": [0.0, 1.2, -1.57, 1.0, 0.0, 0.0, 0.0, 0.0, 1.2, 1.57, 1.0, 0.0, 0.0, 0.0]}
+operator_arm: {"side": "both"}
+controller_state: {"mode": "hand_guiding", "reason": "enabled; hand-guiding with no arm position targets", "observation_id": 9, "joint_positions_rad": [0.0, 1.2, -1.57, 1.0, 0.0, 0.0, 0.0, 0.0, 1.2, 1.57, 1.0, 0.0, 0.0, 0.0]}
+controller_state: {"mode": "tracking", "reason": "target accepted", "observation_id": 13, "joint_positions_rad": [6.037844070809509e-07, 1.2000034617726945, -1.5699974498002705, 1.0000001814348074, 3.9407434608050034e-07, -8.113389615449905e-07, 2.9618429125926683e-08, -2.6800255465036863e-19, 1.2, 1.57, 1.0, 3.891314715410409e-19, 8.906188782734144e-20, -1.7505057033408516e-19]}
+hold: {}
+controller_state: {"mode": "hold", "reason": "operator hold", "observation_id": 26, "joint_positions_rad": [-6.795634924974917e-08, 1.2000000389393326, -1.5700000849228544, 1.0000000160838023, -1.1828154811182996e-07, 4.2383951487134324e-10, 2.504752926101417e-09, -1.3921297946645307e-07, 1.2000002637806477, 1.5699997224706486, 0.999999984943932, -1.5396207165363593e-07, 4.975673407296266e-08, -2.341709071866367e-09]}
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+...........left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+..left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+.left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+.
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+.left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+............left controller limits: speed=[3.14, 3.14, 3.14, 3.14, 3.92, 3.92, 3.92] rad/s, acceleration=[2.0, 2.0, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+.......
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+.
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+..
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+......
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+.controller_state: {"mode": "unarmed", "reason": "left selected; E enables hand-guiding; targets resume follower control", "observation_id": 6, "joint_positions_rad": [0.0, 1.2, -1.57, 1.0, 0.0, 0.0, 0.0, 0.0, 1.2, 1.57, 1.0, 0.0, 0.0, 0.0]}
+operator_arm: {"side": "left"}
+controller_state: {"mode": "hand_guiding", "reason": "enabled; hand-guiding with no arm position targets", "observation_id": 9, "joint_positions_rad": [0.0, 1.2, -1.57, 1.0, 0.0, 0.0, 0.0, 0.0, 1.2, 1.57, 1.0, 0.0, 0.0, 0.0]}
+controller_state: {"mode": "tracking", "reason": "target accepted", "observation_id": 12, "joint_positions_rad": [5.038531338984155e-05, 1.1999457664067876, -1.5699051343427681, 1.0000930126535659, -9.168431280090952e-05, 9.066781678528373e-05, -9.065855430836082e-05, -1.2918257533012875e-19, 1.2, 1.57, 1.0, 3.9212886397706677e-19, -3.9162251764848465e-21, -4.828256572925584e-20]}
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+controller_state: {"mode": "unarmed", "reason": "left selected; E enables hand-guiding; targets resume follower control", "observation_id": 6, "joint_positions_rad": [0.0, 1.2, -1.57, 1.0, 0.0, 0.0, 0.0, 0.0, 1.2, 1.57, 1.0, 0.0, 0.0, 0.0]}
+operator_arm: {"side": "left"}
+controller_state: {"mode": "hand_guiding", "reason": "enabled; hand-guiding with no arm position targets", "observation_id": 9, "joint_positions_rad": [0.0, 1.2, -1.57, 1.0, 0.0, 0.0, 0.0, 0.0, 1.2, 1.57, 1.0, 0.0, 0.0, 0.0]}
+controller_state: {"mode": "tracking", "reason": "target accepted", "observation_id": 12, "joint_positions_rad": [5.038531338984155e-05, 1.1999457664067876, -1.5699051343427681, 1.0000930126535659, -9.168431280090952e-05, 9.066781678528373e-05, -9.065855430836082e-05, -1.2918257533012875e-19, 1.2, 1.57, 1.0, 3.9212886397706677e-19, -3.9162251764848465e-21, -4.828256572925584e-20]}
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+....................................................
+----------------------------------------------------------------------
+Ran 170 tests in 202.444s
+
+OK

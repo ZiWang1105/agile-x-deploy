@@ -71,7 +71,7 @@ class CanRecoveryTests(unittest.TestCase):
         self.assertEqual(connection.recv.call_count, 1)
         response = connection.send.call_args_list[-1].args[0]
         self.assertEqual(response[:2], (1, False))
-        self.assertIn("HOLD unconfirmed", response[2])
+        self.assertIn("final mode unconfirmed", response[2])
 
 
 if __name__ == "__main__":

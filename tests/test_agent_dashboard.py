@@ -190,6 +190,9 @@ class DashboardTests(unittest.TestCase):
             def hold(self):
                 self.holds += 1
 
+            def enter_hand_guiding(self):
+                self.guiding = True
+
         robot = Robot()
         executor = AgentExecutor(robot).start()
         decision = SimpleNamespace(
@@ -222,6 +225,7 @@ class DashboardTests(unittest.TestCase):
             time.sleep(0.1)
             self.assertEqual(robot.writes, after_stop)
             self.assertEqual(robot.holds, 1)
+            self.assertTrue(robot.guiding)
         finally:
             executor.close()
             thread.join(timeout=1)

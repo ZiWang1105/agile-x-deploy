@@ -119,13 +119,13 @@ class AgentDashboard:
                         dashboard.update(
                             can_start=False,
                             phase="stopping",
-                            message="Requesting HOLD…",
+                            message="Stopping policy and requesting hand-guiding…",
                         )
                         if halt is not None:
                             halt()
                         dashboard.update(
                             phase="stopped",
-                            message="Policy stopped. HOLD requested; motors are not disabled.",
+                            message="Policy stopped. Hand-guiding requested; motors are not disabled.",
                         )
                         if self.path == "/exit":
                             dashboard.exited.set()

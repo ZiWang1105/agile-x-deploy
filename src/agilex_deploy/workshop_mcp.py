@@ -12,8 +12,9 @@ from .workshop_client import RobotClient
 
 def build_server(client):
     mcp = FastMCP(
-        "AgileX Workshop",
+        "Workshop on Agentic Robotics · AgileX",
         instructions=(
+            "Robot platform for the Workshop on Agentic Robotics: https://agentic-robotics-workshop.github.io/ "
             "Use one head RGB-D camera, official IK, and independent left/right grippers. "
             "Claim the session first. Operator enables physical motion in the dashboard. "
             "Every motion requires a unique request_id; retry the SAME request with the SAME ID. "
@@ -29,7 +30,7 @@ def build_server(client):
 
     @mcp.tool()
     def session_release() -> dict:
-        """Release ownership and request HOLD. Motors remain enabled."""
+        """Release ownership and preserve gripper targets. Arms retain HOLD by default; hand-guiding is opt-in. Motors remain enabled."""
         client.close()
         return {"released": True}
 
@@ -60,7 +61,7 @@ def build_server(client):
 
     @mcp.tool()
     def camera_deproject(frame_id: str, pixel_uv: list[int]) -> dict:
-        """Resolve [u,v] in the specified RGB-D frame to base_link meters. Returns acquisition age."""
+        """Resolve [u,v] in the specified RGB-D frame to base_link meters. The last 32 policy captures survive live video updates. Returns acquisition age; recapture after scene changes."""
         return client.deproject(frame_id, pixel_uv)
 
     @mcp.tool()
@@ -79,7 +80,7 @@ def build_server(client):
         seed_rad: list[float] | None = None,
         tool_frame: Literal["tcp", "pinch"] = "tcp",
     ) -> dict:
-        """Official AgileX IK only: target {position_m:[x,y,z], quaternion_xyzw:[x,y,z,w]}. Returns residuals; does not move."""
+        """Read-only official AgileX IK: target {position_m:[x,y,z], quaternion_xyzw:[x,y,z,w]}. success requires residuals <=5 mm and <=0.05 rad; solver_success alone does not. This one-seed solve does not certify a motion path; move_tcp validates sampled paths separately."""
         return client.ik(arm, target, seed_rad, tool_frame)
 
     @mcp.tool()
@@ -187,7 +188,7 @@ def build_server(client):
 
     @mcp.tool()
     def robot_hold() -> dict:
-        """Cancel motion and request HOLD on both arms/grippers. No motor disable."""
+        """Stop arm motion and preserve the last independent gripper targets. Does not release a grasp or disable motors."""
         return client.hold()
 
     @mcp.resource("workshop://api")

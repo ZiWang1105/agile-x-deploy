@@ -1,0 +1,41 @@
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+......
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+.controller_state: {"mode": "unarmed", "reason": "left selected; E enables hand-guiding; targets resume follower control", "observation_id": 10, "joint_positions_rad": [0.0, 1.2, -1.57, 1.0, 0.0, 0.0, 0.0, 0.0, 1.2, 1.57, 1.0, 0.0, 0.0, 0.0]}
+operator_arm: {"side": "left"}
+controller_state: {"mode": "hand_guiding", "reason": "enabled; hand-guiding with no arm position targets", "observation_id": 13, "joint_positions_rad": [0.0, 1.2, -1.57, 1.0, 0.0, 0.0, 0.0, 0.0, 1.2, 1.57, 1.0, 0.0, 0.0, 0.0]}
+controller_state: {"mode": "tracking", "reason": "target accepted", "observation_id": 16, "joint_positions_rad": [5.038531338984155e-05, 1.1999457664067876, -1.5699051343427681, 1.0000930126535659, -9.168431280090952e-05, 9.066781678528373e-05, -9.065855430836082e-05, -1.2918257533012875e-19, 1.2, 1.57, 1.0, 3.9212886397706677e-19, -3.9162251764848465e-21, -4.828256572925584e-20]}
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+controller_state: {"mode": "unarmed", "reason": "left selected; E enables hand-guiding; targets resume follower control", "observation_id": 8, "joint_positions_rad": [0.0, 1.2, -1.57, 1.0, 0.0, 0.0, 0.0, 0.0, 1.2, 1.57, 1.0, 0.0, 0.0, 0.0]}
+operator_arm: {"side": "left"}
+controller_state: {"mode": "hand_guiding", "reason": "enabled; hand-guiding with no arm position targets", "observation_id": 11, "joint_positions_rad": [0.0, 1.2, -1.57, 1.0, 0.0, 0.0, 0.0, 0.0, 1.2, 1.57, 1.0, 0.0, 0.0, 0.0]}
+controller_state: {"mode": "tracking", "reason": "target accepted", "observation_id": 14, "joint_positions_rad": [5.038531338984155e-05, 1.1999457664067876, -1.5699051343427681, 1.0000930126535659, -9.168431280090952e-05, 9.066781678528373e-05, -9.065855430836082e-05, -1.2918257533012875e-19, 1.2, 1.57, 1.0, 3.9212886397706677e-19, -3.9162251764848465e-21, -4.828256572925584e-20]}
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+.
+----------------------------------------------------------------------
+Ran 8 tests in 14.107s
+
+OK

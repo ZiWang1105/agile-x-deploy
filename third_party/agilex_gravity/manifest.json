@@ -1,0 +1,6 @@
+{
+  "repository": "https://github.com/agilexrobotics/agilex-arm-gravity-compensation",
+  "commit": "8e2545c00ec9ec7590414946ab5f913274c7b643",
+  "source_path": "core/agx_pinocchio.py",
+  "sha256": "5975600c8104dd5f38b0e5aedd215d217bada2b3c7624bd34c04ef1e044a3d0d"
+}

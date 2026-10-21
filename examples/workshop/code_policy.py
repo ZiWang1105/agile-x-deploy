@@ -1,6 +1,7 @@
 """RGB-D color baseline using ONLY the public participant SDK.
 
-This intentionally simple baseline assumes the workshop's 50 mm colored cubes
+This baseline for the Workshop on Agentic Robotics
+(https://agentic-robotics-workshop.github.io/) assumes the simulator's 50 mm colored cubes
 and horizontal shallow trays. It reads no simulator state or scene files.
 """
 

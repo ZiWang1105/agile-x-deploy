@@ -1,0 +1,225 @@
+{
+  "physical_commands_sent": 0,
+  "physical_incident_reproduced": false,
+  "physical_root_cause_established": false,
+  "real_deployment_qualified": false,
+  "purpose": "Demonstrate sensitivity hidden by ideal gravity compensation, not fit or reconstruct the observed swing.",
+  "limitations": [
+    "Initial posture is the preview posture, not a recorded incident posture.",
+    "No incident CAN TX/RX or continuous joint trajectory was saved in the session directory.",
+    "Gravity factors are hypothetical faults, not measured firmware settings.",
+    "The simulation does not implement the firmware's internal controller, torque limits, friction or mounting logic.",
+    "Opposite torque is not a calibrated model of either official side-mount setting.",
+    "The retained-servo case injects a 20-degree target error; neither that target nor that error is known to have occurred on the real robot."
+  ],
+  "official_leader_frames_encoded_offline": [
+    {
+      "can_id": "0x151",
+      "payload": "01ff640000000200"
+    },
+    {
+      "can_id": "0x470",
+      "payload": "fa00000000000000"
+    }
+  ],
+  "experiments": [
+    {
+      "artificial_left_gravity_compensation_factor": 1.0,
+      "duration_s": 1.0,
+      "left_max_joint_displacement_deg": 1.8431577017517512e-13,
+      "right_max_joint_displacement_deg": 2.986653831411561e-16,
+      "left_final_tcp_displacement_m": [
+        2.220446049250313e-16,
+        -5.551115123125783e-17,
+        -1.6653345369377348e-16
+      ],
+      "initial_q_rad": [
+        0.0,
+        1.2,
+        -1.57,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.2,
+        1.57,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "initial_left_tcp_m": [
+        0.37220595814682694,
+        0.437574216424137,
+        0.07631032014494742
+      ],
+      "retained_position_servo": false,
+      "hypothetical_target_q_rad": null,
+      "case": "ideal"
+    },
+    {
+      "artificial_left_gravity_compensation_factor": 0.8,
+      "duration_s": 1.0,
+      "left_max_joint_displacement_deg": 51.35996141570524,
+      "right_max_joint_displacement_deg": 9.087620882063515e-17,
+      "left_final_tcp_displacement_m": [
+        -0.4051011491833241,
+        -0.23856157971341418,
+        -0.23931491460403703
+      ],
+      "initial_q_rad": [
+        0.0,
+        1.2,
+        -1.57,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.2,
+        1.57,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "initial_left_tcp_m": [
+        0.37220595814682694,
+        0.437574216424137,
+        0.07631032014494742
+      ],
+      "retained_position_servo": false,
+      "hypothetical_target_q_rad": null,
+      "case": "20_percent_under"
+    },
+    {
+      "artificial_left_gravity_compensation_factor": 0.0,
+      "duration_s": 1.0,
+      "left_max_joint_displacement_deg": 65.13380744032435,
+      "right_max_joint_displacement_deg": 1.1749429941604207e-16,
+      "left_final_tcp_displacement_m": [
+        -0.46972166437061263,
+        -0.18130953822510704,
+        -0.23424060793220114
+      ],
+      "initial_q_rad": [
+        0.0,
+        1.2,
+        -1.57,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.2,
+        1.57,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "initial_left_tcp_m": [
+        0.37220595814682694,
+        0.437574216424137,
+        0.07631032014494742
+      ],
+      "retained_position_servo": false,
+      "hypothetical_target_q_rad": null,
+      "case": "absent"
+    },
+    {
+      "artificial_left_gravity_compensation_factor": -1.0,
+      "duration_s": 1.0,
+      "left_max_joint_displacement_deg": 70.35616357998289,
+      "right_max_joint_displacement_deg": 1.0451944523744381e-16,
+      "left_final_tcp_displacement_m": [
+        -0.089617432681036,
+        -0.08290751266263702,
+        -0.16965481142806194
+      ],
+      "initial_q_rad": [
+        0.0,
+        1.2,
+        -1.57,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.2,
+        1.57,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "initial_left_tcp_m": [
+        0.37220595814682694,
+        0.437574216424137,
+        0.07631032014494742
+      ],
+      "retained_position_servo": false,
+      "hypothetical_target_q_rad": null,
+      "case": "opposite_torque"
+    },
+    {
+      "artificial_left_gravity_compensation_factor": 1.0,
+      "duration_s": 1.0,
+      "left_max_joint_displacement_deg": 19.999807860520974,
+      "right_max_joint_displacement_deg": 7.861883169186843e-17,
+      "left_final_tcp_displacement_m": [
+        -0.19827556467242302,
+        -0.0001577729223194435,
+        -0.09709943919030252
+      ],
+      "initial_q_rad": [
+        0.0,
+        1.2,
+        -1.57,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.2,
+        1.57,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "initial_left_tcp_m": [
+        0.37220595814682694,
+        0.437574216424137,
+        0.07631032014494742
+      ],
+      "retained_position_servo": true,
+      "hypothetical_target_q_rad": [
+        0.3490658503988659,
+        1.2,
+        -1.57,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.2,
+        1.57,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "synthetic_push": {
+        "joint": "left_joint1",
+        "torque_nm": 1.0,
+        "duration_s": 0.2,
+        "displacement_during_push_deg": 0.14578183942292974,
+        "error_from_old_target_after_release_deg": 1.2682088582868896e-05,
+        "release_wait_s": 0.8
+      },
+      "case": "hypothetical_old_target_and_position_servo_retained"
+    }
+  ]
+}

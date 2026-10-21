@@ -2,8 +2,8 @@
 
 Pinocchio/CasADi/IPOPT come from the pinned upstream implementation. The NERO
 YAML supplies defaults with explicit local tuning in configs/ik.yaml.
-Only asset resolution, stand-to-arm
-frames, feedback synchronization and result validation are handled here.
+The adapter handles asset resolution, stand-to-arm frames, feedback
+synchronization, failure diagnostics and result validation.
 """
 import ast
 from functools import lru_cache
@@ -72,7 +72,14 @@ def make_solver(*, upstream_defaults=False):
     # lock list was authored. It is not one of the seven output arm joints.
     # Lock only that named gripper axis; this does not change arm geometry.
     kwargs["locked_joints"] = [*parameters["locked_joints"], "gripper"]
-    return cls(urdf_path=str(resolved_urdf()), package_dirs=[], **kwargs)
+    solver = cls(urdf_path=str(resolved_urdf()), package_dirs=[], **kwargs)
+    # Pinocchio 3.2 log6 includes inactive singular-case branches whose square
+    # roots can be nonfinite after roundoff near the identity rotation. CasADi
+    # 3.6.7 reverse AD can propagate those NaNs into the objective gradient.
+    # Forward AD keeps the selected branch's derivatives finite. Set this before
+    # IPOPT builds derivatives; the upstream error, cost and solver stay intact.
+    solver.error.change_option("ad_weight", 0)
+    return solver
 
 
 def pose_matrix(pose):
@@ -84,10 +91,12 @@ def pose_matrix(pose):
 
 class OfficialDualIK:
     def __init__(self, kinematics, q):
+        self.parameters = solver_parameters()
         self.solvers = {side: make_solver() for side in SIDES}
         self.mounts = {}
         self.last_solve_ms = {}
         self.last_status = {}
+        self.last_diagnostic = {}
         kinematics.update(q, (None, None))
         names = official_parameters()["output_joint_names"]
         for index, side in enumerate(SIDES):
@@ -113,17 +122,47 @@ class OfficialDualIK:
         solver.sync_state(measured.tolist())
         target_in_arm = np.linalg.solve(self.mounts[side], pose_matrix(target))
         began = time.monotonic()
-        result = solver.solve(target_in_arm)
-        stats = solver.opti.stats()
-        self.last_solve_ms[side] = (time.monotonic() - began) * 1000
-        self.last_status[side] = stats.get("return_status", "unknown")
-        # Upstream solve_limited may return an iteration-limited iterate. Do
-        # not silently dispatch that as a successful solution on hardware.
-        if not stats.get("success", False):
-            raise RuntimeError(f"Official {side} IK failed: {self.last_status[side]}")
         limits = solver.reduced_robot.model
-        if (result.shape != (7,) or not np.all(np.isfinite(result)) or
-                np.any(result < limits.lowerPositionLimit - 1e-7) or
-                np.any(result > limits.upperPositionLimit + 1e-7)):
-            raise RuntimeError("Official IK returned invalid joint positions")
-        return result
+        initial = np.array(solver.init_data, copy=True)
+        try:
+            result = solver.solve(target_in_arm)
+            stats = solver.opti.stats()
+            self.last_status[side] = stats.get("return_status", "unknown")
+            if not stats.get("success", False):
+                raise RuntimeError(f"Official {side} IK failed: {self.last_status[side]}")
+            if (result.shape != (7,) or not np.all(np.isfinite(result)) or
+                    np.any(result < limits.lowerPositionLimit - 1e-7) or
+                    np.any(result > limits.upperPositionLimit + 1e-7)):
+                raise RuntimeError("Official IK returned invalid joint positions")
+            return result
+        except RuntimeError as error:
+            try:
+                status = solver.opti.stats().get("return_status", "unknown")
+            except Exception:
+                status = "unknown"
+            self.last_status[side] = status
+            try:
+                iterate = np.asarray(solver.opti.debug.value(solver.var_q)).reshape(-1)
+                iterate = [float(v) if np.isfinite(v) else None for v in iterate]
+            except Exception:
+                iterate = None
+            failure = dict(status=status, error=str(error),
+                           initial_guess_rad=initial.tolist(), failed_iterate_rad=iterate)
+            path = self._save_diagnostic(side, measured, target_in_arm, failure)
+            raise RuntimeError(f"Official {side} IK failed: {status}; diagnostic={path}; {error}") from error
+        finally:
+            self.last_solve_ms[side] = (time.monotonic() - began) * 1000
+
+    def _save_diagnostic(self, side, measured, target_in_arm, failure):
+        """Preserve reproducible solver inputs; never mask a control fault with I/O errors."""
+        path = ROOT / "logs/ik_failures" / f"{time.time_ns()}_{os.getpid()}_{side}.json"
+        report = dict(side=side, measured_rad=measured.tolist(),
+                      target_in_arm=target_in_arm.tolist(), mount_in_base=self.mounts[side].tolist(),
+                      parameters=self.parameters, failure=failure)
+        self.last_diagnostic[side] = report
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
+        except (OSError, ValueError) as error:
+            return f"unwritten ({type(error).__name__}); inputs retained in last_diagnostic"
+        return str(path)

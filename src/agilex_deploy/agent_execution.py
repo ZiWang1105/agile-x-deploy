@@ -82,7 +82,9 @@ class AgentExecutor:
             self.stop_event.set()
             self.target = None
             self.robot.hold()
-            self.report = {"state": "stopped", "reason": "Operator requested HOLD"}
+            if not self.error and self.robot.observe().mode not in ("fault", "unarmed"):
+                self.robot.enter_hand_guiding()
+            self.report = {"state": "stopped", "reason": "Operator stopped policy; hand-guiding requested"}
 
     def _run(self):
         try:
@@ -141,3 +143,5 @@ class AgentExecutor:
         if self.thread.is_alive():
             raise RuntimeError("Execution owner failed to stop")
         self.robot.hold()
+        if not self.error and self.robot.observe().mode not in ("fault", "unarmed"):
+            self.robot.enter_hand_guiding()

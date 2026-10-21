@@ -1,0 +1,8 @@
+[
+  {
+    "time_s": 826437.243482785,
+    "event": "hand_guiding",
+    "reason": "policy session ended",
+    "motors_disabled": false
+  }
+]

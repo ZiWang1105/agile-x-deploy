@@ -55,8 +55,12 @@ Without `--execute-real`, the website is a live monitor with Start disabled.
 With `--no-web --execute-real`, the command itself starts physical execution.
 
 This requires the existing official IK environment. The default model is
-`google/gemini-3.8-flash`. The default external key file is
-`~/projects/openrouter_key.txt`; override it with `--key-file PATH`. The client
+`google/gemini-3.8-flash`. Place the key in `openrouter_key.txt` at the repository
+root (`~/projects/agilex-deploy/openrouter_key.txt` on this desktop), containing
+only the key, without quotes or an environment-variable assignment. This default
+is independent of the current working directory; override it with `--key-file PATH`.
+The file is ignored by Git and must not be committed. Restrict access with
+`chmod 600 openrouter_key.txt` from the repository root. The client
 reads the key only for HTTPS authorization. Headers and key contents are never
 written to episode logs. `--max-calls` and `--max-cost` bound requests and reported
 spending; the cost threshold is checked between calls, so a last request can

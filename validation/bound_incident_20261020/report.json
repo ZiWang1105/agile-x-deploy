@@ -1,0 +1,94 @@
+{
+  "recorded_target_replays": [
+    {
+      "transport": "python",
+      "simulation_only": true,
+      "contacts_enabled": false,
+      "state": "succeeded",
+      "selected_arc": "alternate",
+      "operation_wall_s": 2.8855015949811786,
+      "position_error_m": 0.0013136994085747322,
+      "orientation_error_rad": 0.010029321002022662,
+      "max_right_joint_drift_rad": 0.0,
+      "max_velocity_fraction": 0.6234313851364133,
+      "max_acceleration_fraction": 1.000000000000334,
+      "checked_commands": 492,
+      "one_shot_ik": {
+        "success": false,
+        "solver_success": true,
+        "joints_rad": [
+          -0.1488272045212427,
+          1.7399990197884234,
+          -1.2367247240079229,
+          1.4389846819594672,
+          -2.749998779428661,
+          -0.33832511993857395,
+          1.5707899211780354
+        ],
+        "position_error_m": 0.0040877096282450655,
+        "orientation_error_rad": 0.2891923832747986,
+        "position_tolerance_m": 0.005,
+        "orientation_tolerance_rad": 0.05,
+        "solver_status": "Solve_Succeeded",
+        "within_model_limits": true,
+        "collision_checked": false,
+        "physical_limits_checked": false
+      }
+    },
+    {
+      "transport": "mcp",
+      "simulation_only": true,
+      "contacts_enabled": false,
+      "state": "succeeded",
+      "selected_arc": "alternate",
+      "operation_wall_s": 2.908609205042012,
+      "position_error_m": 0.0013244583147281304,
+      "orientation_error_rad": 0.010020083947789363,
+      "max_right_joint_drift_rad": 0.0,
+      "max_velocity_fraction": 0.6234313851364133,
+      "max_acceleration_fraction": 1.000000000000334,
+      "checked_commands": 507,
+      "one_shot_ik": {
+        "success": false,
+        "solver_success": true,
+        "joints_rad": [
+          -0.1488272045212427,
+          1.7399990197884234,
+          -1.2367247240079229,
+          1.4389846819594672,
+          -2.749998779428661,
+          -0.33832511993857395,
+          1.5707899211780354
+        ],
+        "position_error_m": 0.0040877096282450655,
+        "orientation_error_rad": 0.2891923832747986,
+        "position_tolerance_m": 0.005,
+        "orientation_tolerance_rad": 0.05,
+        "solver_status": "Solve_Succeeded",
+        "within_model_limits": true,
+        "collision_checked": false,
+        "physical_limits_checked": false
+      }
+    }
+  ],
+  "generated_code_policy": {
+    "success": true,
+    "task": "place",
+    "placement_dwell_s": {
+      "red": 3.4600000000042286
+    },
+    "max_lift_m": {
+      "red": 0.1259010728451207
+    },
+    "distractor_unchanged": true,
+    "max_displacement_m": {
+      "red": 0.19498970410612831
+    },
+    "robot_environment_collision_frames": 0,
+    "criterion": "lift >=25 mm; full footprint in tray; released, tray-supported and stable >=1 s; distractor translation <10 mm throughout; no penetrating arm/environment contacts",
+    "policy_exit_code": 0,
+    "transport": "python",
+    "policy_type": "model"
+  },
+  "physical_motion_tested": false
+}

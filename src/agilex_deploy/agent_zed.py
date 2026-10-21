@@ -184,8 +184,18 @@ class ZedStereoCamera:
         return stamp, cv2.cvtColor(left, cv2.COLOR_BGR2RGB)
 
     def capture(self):
-        stamp, image = self._latest_stereo()
+        # Observation may wait behind a slow arm/mode transition. Select the
+        # newest image after that wait, so the wait cannot age a retained frame.
+        # The acquisition timestamp and the age/skew checks remain unchanged.
         observation = self.robot.observe()
+        frame = self.capture_frame()
+        if abs(observation.timestamp_s - frame.timestamp_s) > 0.1:
+            raise RuntimeError("No robot feedback matched to ZED capture within 100 ms")
+        return observation, frame
+
+    def capture_frame(self):
+        """Produce registered RGB-D without waiting for any robot RPC or lock."""
+        stamp, image = self._latest_stereo()
         rectified = [
             cv2.remap(cv2.resize(eye, (640, 360)), *maps, cv2.INTER_LINEAR)
             for eye, maps in zip((image[:, :1280], image[:, 1280:]), self.maps)
@@ -208,9 +218,7 @@ class ZedStereoCamera:
             self.calibration,
         )
         frame.validate()
-        if abs(observation.timestamp_s - stamp) > 0.1:
-            raise RuntimeError("No robot feedback matched to ZED capture within 100 ms")
-        return observation, frame
+        return frame
 
     def close(self):
         self.stop_event.set()

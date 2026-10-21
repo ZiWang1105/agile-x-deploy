@@ -1,0 +1,23 @@
+{
+  "incident": "logs/gravity_comp/20261020_160715_191871/events.jsonl",
+  "operator_report": "Arm felt as if it was falling; operator could not tell whether before or after STOP.",
+  "root_cause_established": false,
+  "leader_feedback_duration_s": 9.2528610000154,
+  "trigger": {
+    "joint": "left_joint4",
+    "estimated_speed_rad_s": 0.3612908830131337,
+    "threshold_rad_s": 0.35,
+    "source": "finite difference of leader encoder angles"
+  },
+  "right_max_joint_displacement_rad": 0.0,
+  "post_stop_logged_rows": 13,
+  "post_stop_unique_sequences": 1,
+  "post_stop_acquisition_after_recorded_stop": 0,
+  "limitations": [
+    "The previous stop event was logged after its three send attempts; it is not the exact first-send timestamp.",
+    "Post-stop cached feedback cannot establish whether descent occurred after stop.",
+    "Leader stream has no verified joint torque, motor enable or arm status telemetry.",
+    "No raw independent CAN trace or synchronized video was saved for this run."
+  ],
+  "physical_state_after_operator_shutdown": "Both arms confirmed 0/7 enabled by hardware_power; no subsequent control commands sent in this investigation."
+}

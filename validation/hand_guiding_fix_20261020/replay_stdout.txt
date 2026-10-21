@@ -1,0 +1,113 @@
+left controller limits: speed=[3.14, 3.14, 3.14, 3.14, 3.92, 3.92, 3.92] rad/s, acceleration=[2.0, 2.0, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[3.14, 3.14, 3.14, 3.14, 3.92, 3.92, 3.92] rad/s, acceleration=[2.0, 2.0, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+{
+  "backend": "MuJoCo + NERO 1.21 firmware emulator",
+  "physical_commands_sent": 0,
+  "physical_gravity_compensation_verified": false,
+  "physical_deployment_qualified": false,
+  "cycles": [
+    {
+      "index": 0,
+      "leader_feedback": [
+        {
+          "angle_source": "leader",
+          "velocity_source": "angle_difference",
+          "motor_enabled": null,
+          "gripper_feedback_available": false
+        },
+        {
+          "angle_source": "leader",
+          "velocity_source": "angle_difference",
+          "motor_enabled": null,
+          "gripper_feedback_available": false
+        }
+      ],
+      "follower_feedback": [
+        {
+          "angle_source": "follower",
+          "velocity_source": "motor",
+          "motor_enabled": true,
+          "gripper_feedback_available": true
+        },
+        {
+          "angle_source": "follower",
+          "velocity_source": "motor",
+          "motor_enabled": true,
+          "gripper_feedback_available": true
+        }
+      ],
+      "mode_after_return": "follower"
+    },
+    {
+      "index": 1,
+      "leader_feedback": [
+        {
+          "angle_source": "leader",
+          "velocity_source": "angle_difference",
+          "motor_enabled": null,
+          "gripper_feedback_available": false
+        },
+        {
+          "angle_source": "leader",
+          "velocity_source": "angle_difference",
+          "motor_enabled": null,
+          "gripper_feedback_available": false
+        }
+      ],
+      "follower_feedback": [
+        {
+          "angle_source": "follower",
+          "velocity_source": "motor",
+          "motor_enabled": true,
+          "gripper_feedback_available": true
+        },
+        {
+          "angle_source": "follower",
+          "velocity_source": "motor",
+          "motor_enabled": true,
+          "gripper_feedback_available": true
+        }
+      ],
+      "mode_after_return": "follower"
+    },
+    {
+      "index": 2,
+      "leader_feedback": [
+        {
+          "angle_source": "leader",
+          "velocity_source": "angle_difference",
+          "motor_enabled": null,
+          "gripper_feedback_available": false
+        },
+        {
+          "angle_source": "leader",
+          "velocity_source": "angle_difference",
+          "motor_enabled": null,
+          "gripper_feedback_available": false
+        }
+      ],
+      "follower_feedback": [
+        {
+          "angle_source": "follower",
+          "velocity_source": "motor",
+          "motor_enabled": true,
+          "gripper_feedback_available": true
+        },
+        {
+          "angle_source": "follower",
+          "velocity_source": "motor",
+          "motor_enabled": true,
+          "gripper_feedback_available": true
+        }
+      ],
+      "mode_after_return": "follower"
+    }
+  ],
+  "max_joint_drift_rad_ideal_gravity": 0.0,
+  "supported_shutdown": {
+    "left_enabled": 0,
+    "right_enabled": 0,
+    "commands_sent": 36
+  },
+  "success": true
+}

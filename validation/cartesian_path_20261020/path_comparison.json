@@ -1,0 +1,42 @@
+{
+  "simulation_only": true,
+  "duration_sim_s": 6,
+  "direct_endpoint": {
+    "left": {
+      "max_cross_track_mm": 16.815673479047547,
+      "final_position_mm": 0.04596604388205022,
+      "final_rotation_rad": 0.000789976451898211
+    },
+    "right": {
+      "max_cross_track_mm": 16.815248954602378,
+      "final_position_mm": 0.04598994242078213,
+      "final_rotation_rad": 0.000790371121323325
+    },
+    "max_velocity_limit_ratio": 0.29757195615053206,
+    "max_acceleration_limit_ratio": 1.000000000000334,
+    "grippers": [
+      1.0000002800356318,
+      -2.710448283673537e-07
+    ]
+  },
+  "cartesian_waypoints": {
+    "left": {
+      "max_cross_track_mm": 6.580772793548083,
+      "final_position_mm": 0.04598990713162594,
+      "final_rotation_rad": 0.0007898280147538681
+    },
+    "right": {
+      "max_cross_track_mm": 6.5800534091002945,
+      "final_position_mm": 0.04601353723134789,
+      "final_rotation_rad": 0.0007902218733335467
+    },
+    "max_velocity_limit_ratio": 0.1592356687898621,
+    "max_acceleration_limit_ratio": 1.000000000000334,
+    "grippers": [
+      1.000000303523216,
+      -2.9375326962071844e-07
+    ]
+  },
+  "collision_checked": false,
+  "description": "Same official IK, joint limits and actuator dynamics; only waypoint layer differs."
+}

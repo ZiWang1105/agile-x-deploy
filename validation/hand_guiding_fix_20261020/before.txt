@@ -1,0 +1,35 @@
+left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+E
+======================================================================
+ERROR: test_pair_enters_leader_when_normal_status_stream_disappears (test_firmware_hand_guiding.FirmwareHandGuidingTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/ziwang/projects/agilex-deploy/src/agilex_deploy/nero_transport.py", line 443, in enter_hand_guiding
+    self._confirm_mode("leader", switched)
+  File "/home/ziwang/projects/agilex-deploy/src/agilex_deploy/nero_transport.py", line 477, in _confirm_mode
+    raise RuntimeError(last_error)
+RuntimeError: Waiting for complete paired joint and driver feedback
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ziwang/projects/agilex-deploy/src/agilex_deploy/dual_transport.py", line 205, in enter_hand_guiding
+    endpoint.enter_hand_guiding()
+  File "/home/ziwang/projects/agilex-deploy/src/agilex_deploy/nero_transport.py", line 448, in enter_hand_guiding
+    raise RuntimeError(self.fault) from error
+RuntimeError: Hand-guiding unconfirmed on left: Waiting for complete paired joint and driver feedback; no automatic disable
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ziwang/projects/agilex-deploy/tests/test_firmware_hand_guiding.py", line 14, in test_pair_enters_leader_when_normal_status_stream_disappears
+    transport.enter_hand_guiding()
+  File "/home/ziwang/projects/agilex-deploy/src/agilex_deploy/dual_transport.py", line 208, in enter_hand_guiding
+    raise self._fail(error) from error
+RuntimeError: Hand-guiding unconfirmed on left: Waiting for complete paired joint and driver feedback; no automatic disable
+
+----------------------------------------------------------------------
+Ran 1 test in 2.079s
+
+FAILED (errors=1)

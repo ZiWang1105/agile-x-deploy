@@ -12,6 +12,25 @@ SIM_VELOCITY = np.array([3.14, 3.14, 3.14, 3.14, 3.92, 3.92, 3.92])
 SIM_ACCELERATION = np.array([2., 2., 2.5, 2.5, 2.5, 2.5, 2.5])
 
 
+def bounded_hold_reference(measured, position_limits):
+    """Keep feedback tolerance separate from strict outgoing reference bounds.
+
+    The runtime admits feedback within 0.02 rad of a position bound. Servo
+    error and the CAN encoder's millidegree resolution can put valid feedback
+    just outside that bound; HOLD must not promote it to an invalid command.
+    """
+    limits = np.asarray(position_limits, dtype=float)
+    try:
+        q = np.asarray(measured, dtype=float)
+    except (TypeError, ValueError) as error:
+        raise RuntimeError("Invalid measured joints for HOLD") from error
+    if q.shape != limits.shape[:-1] or not np.all(np.isfinite(q)):
+        raise RuntimeError("Invalid measured joints for HOLD")
+    if np.any(q < limits[:, 0] - .02) or np.any(q > limits[:, 1] + .02):
+        raise RuntimeError("Measured joint position outside source limits")
+    return np.clip(q, limits[:, 0], limits[:, 1])
+
+
 @dataclass(frozen=True)
 class JointLimits:
     position: np.ndarray

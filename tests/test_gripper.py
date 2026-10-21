@@ -210,6 +210,20 @@ class GripperTests(unittest.TestCase):
             )
             self.assertNotIn(0x471, [cid for cid, _, _ in frames(t)])
 
+    def test_normal_pause_does_not_replace_firmware_gripper_target(self):
+        for side in ("left", "right"):
+            t, q = wire_transport(side)
+            t.gripper_active = True
+            target = [None, None]
+            target[t.side_index] = 0.0
+            t.send_positions(q, target)
+            self.assertIn(0x159, [cid for cid, _, _ in frames(t)])
+            t.writer.send.reset_mock()
+            t.hold(preserve_grippers=True)
+            self.assertTrue(frames(t))  # Arm holding commands still go out.
+            self.assertNotIn(0x159, [cid for cid, _, _ in frames(t)])
+            self.assertNotIn(0x471, [cid for cid, _, _ in frames(t)])
+
     def test_stale_gripper_prevents_all_new_motion_writes(self):
         t, q = wire_transport()
         t.gripper_active = True

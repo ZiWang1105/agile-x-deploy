@@ -277,6 +277,12 @@ def run_viewer(robot: RobotInterface, duration=None, log_path=None, on_ready=Non
                 reset = False
                 changed = False
                 constrained = False
+                if observed.mode == "hand_guiding" and not tracking:
+                    with viewer.lock():
+                        if not viewer.perturb.active:
+                            # Moving an arm by hand must move its idle target
+                            # handle too, without generating a robot command.
+                            targets = viewer_targets(observed, hardware_control)
                 if tracking and (not usable or observed.mode == "hold"):
                     tracking, reset = False, True
                     message = observed.reason
@@ -289,7 +295,7 @@ def run_viewer(robot: RobotInterface, duration=None, log_path=None, on_ready=Non
                             lift_target = robot.arm()
                             observed = robot.observe()
                             reset, tracking = True, False
-                            message = "ARMED. Holding current posture. G: request 30 mm upward test."
+                            message = "ARMED. Hand-guiding active. A target resumes follower control. G: 30 mm upward test."
                             log("operator_arm", side=robot.side)
                         except RuntimeError as error:
                             message = str(error)
@@ -391,9 +397,10 @@ def run_viewer(robot: RobotInterface, duration=None, log_path=None, on_ready=Non
                 footer = "Space / R: HOLD | 1 / 2: grippers | Q: quit\nSimulation prototype: contacts disabled; TCP is nominal CAD frame"
                 if feedback is not None:
                     title = "DUAL NERO | REAL FEEDBACK + SIM IK | NO HARDWARE COMMANDS"
-                    enabled = sum(bool(v & 0x40) for v in hardware_snapshot.driver_status)
+                    enabled = sum(bool(v & 0x40) for v in hardware_snapshot.driver_status if v is not None)
+                    unknown = sum(v is None for v in hardware_snapshot.driver_status)
                     age = max(0., time.monotonic() - hardware_snapshot.timestamp_s)
-                    text += f"\nCAN age: {age*1000:.0f} ms | skew: {hardware_snapshot.skew_s*1000:.1f} ms | enabled: {enabled}/14"
+                    text += f"\nCAN age: {age*1000:.0f} ms | skew: {hardware_snapshot.skew_s*1000:.1f} ms | enabled: {enabled}, unknown: {unknown} / 14"
                     text += "\nBLUE: measured joints | AMBER: simulated IK preview"
                     text += "\nHardware velocity and gripper travel: unavailable; fingers hidden"
                     if hardware_fault:
@@ -422,7 +429,8 @@ def run_viewer(robot: RobotInterface, duration=None, log_path=None, on_ready=Non
                                 text += f"\nWorkspace radius remaining: {remaining:.1f} mm"
                                 if remaining < .1:
                                     text += " | AT LIMIT: drag back toward the starting position"
-                    footer = "Space / R: servo HOLD | Q: HOLD and close (motors stay enabled)\nSupervised free-space test only. No collision protection or physical E-stop guarantee."
+                    exit_mode = "hand-guiding" if robot.gravity_comp else "position HOLD"
+                    footer = f"Space / R: servo HOLD | Q: {exit_mode} and close (motors stay enabled)\nSupervised free-space test only. No collision protection or physical E-stop guarantee."
                 drag_help = (f"Only {robot.side.upper()} red target is active; gray target is locked | Double-click red sphere, Ctrl+right drag: move"
                              if hardware_control and robot.side != "both" else "Double-click red sphere | Ctrl+right drag: move | Ctrl+left drag: rotate")
                 if hardware_control and workspace_radius_m is None:
@@ -458,6 +466,8 @@ def _main():
                         help="Opt in to selected-gripper feedback/control; E alone does not open/close it")
     parser.add_argument("--gripper-force-n", type=float, default=1.0,
                         help="Official gripper force command (0–3 N, SDK default 1 N); not measured jaw force")
+    parser.add_argument("--gravity-comp", action=argparse.BooleanOptionalAction, default=False,
+                        help="Opt in to commissioning hand-guiding (default: false)")
     parser.add_argument("--workspace", choices=("bounded", "full"), default="full",
                         help="full removes arming-relative motion caps; joint position/speed/acceleration limits remain, without collision avoidance")
     parser.add_argument("--workspace-radius-cm", type=float,
@@ -489,12 +499,13 @@ def _main():
         with HardwareSession(args.side, mapping=args.mapping,
                              simulation=args.backend == "commissioning-sim",
                              workspace_radius_m=workspace_radius_m, gripper_control=args.gripper,
-                             gripper_force_n=args.gripper_force_n) as robot:
+                             gripper_force_n=args.gripper_force_n, gravity_comp=args.gravity_comp) as robot:
             if workspace_radius_m is None:
                 print("FULL WORKSPACE: no starting-position radius, height floor, rotation cap or joint-excursion cap. Joint position limits and controller-reported speed/acceleration limits apply. NO collision avoidance.", flush=True)
             else:
                 print(f"Workspace radius: {workspace_radius_m * 100:g} cm. Joint excursion remains limited to 0.45 rad; not every target is reachable.", flush=True)
-            print("Starts UNARMED. E enables the selected arms at their current postures.", flush=True)
+            idle_mode = "hand-guiding" if args.gravity_comp else "position HOLD"
+            print(f"Starts UNARMED. E enables the selected arms in {idle_mode}. A target starts follower control.", flush=True)
             if args.gripper:
                 print(f"Gripper opt-in: {'1 / 2' if args.side == 'both' else ('1' if args.side == 'left' else '2')} toggles selected grippers after E. E and pose drags alone never command it. No automatic zeroing.", flush=True)
             print("G requests 30 mm above the arming pose; repeated presses do not stack. Space HOLDs; closing does NOT disable motors.", flush=True)

@@ -17,11 +17,14 @@ from agilex_deploy.model import ROOT
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--backend", choices=["sim", "real"], default="sim")
+    parser.add_argument("--gravity-comp", action=argparse.BooleanOptionalAction, default=False,
+                        help="Opt in to physical hand-guiding on enable/exit (default: false)")
     parser.add_argument(
         "--scene", type=Path, default=ROOT / "configs/agent/cube_scene.json"
     )
     parser.add_argument(
-        "--key-file", type=Path, default=Path.home() / "projects/openrouter_key.txt"
+        "--key-file", type=Path, default=ROOT / "openrouter_key.txt",
+        help="OpenRouter key file (default: openrouter_key.txt in the repository root)",
     )
     parser.add_argument("--model", default="google/gemini-3.8-flash")
     parser.add_argument("--max-calls", type=int, default=16)
@@ -125,7 +128,7 @@ def main():
             from agilex_deploy.agent_zed import ZedStereoCamera
             from agilex_deploy.hardware_session import HardwareSession
 
-            robot = HardwareSession(args.side, gripper_control=True)
+            robot = HardwareSession(args.side, gripper_control=True, gravity_comp=args.gravity_comp)
             available = ("left", "right") if args.side == "both" else (args.side,)
             # All hardware IPC, including live monitoring before enable, shares one lock.
             executor = AgentExecutor(robot, available)

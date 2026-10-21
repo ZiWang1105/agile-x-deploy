@@ -1,0 +1,21 @@
+{
+  "success": true,
+  "task": "select",
+  "placement_dwell_s": {
+    "blue": 2.9600000000009885
+  },
+  "max_lift_m": {
+    "red": 0.0,
+    "blue": 0.1261624789096661
+  },
+  "distractor_unchanged": true,
+  "max_displacement_m": {
+    "red": 0.0015563151735655534,
+    "blue": 0.19119426212042512
+  },
+  "robot_environment_collision_frames": 0,
+  "criterion": "lift >=25 mm; full footprint in tray; released, tray-supported and stable >=1 s; distractor translation <10 mm throughout; no penetrating arm/environment contacts",
+  "policy_exit_code": 0,
+  "transport": "mcp",
+  "policy_type": "scripted_rgbd_baseline"
+}

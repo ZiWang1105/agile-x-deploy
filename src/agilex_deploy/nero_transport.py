@@ -22,8 +22,9 @@ from .contract import Action, ArmTarget, Pose, JOINT_NAMES, SIDES, finite_tuple
 from .controller import pose_error
 from .firmware_probe import query_firmware
 from .model import Kinematics, ROOT
-from .motion_limits import JointLimits, SIM_VELOCITY, SIM_ACCELERATION
+from .motion_limits import JointLimits, SIM_VELOCITY, SIM_ACCELERATION, bounded_hold_reference
 from .limits_probe import query_motion_limits
+from .hardware_interlock import require_qualified_enable, require_qualified_hand_guiding
 
 MAX_SPEED = np.tile(SIM_VELOCITY, 2)  # offline fixture only
 MAX_ACCELERATION = np.tile(SIM_ACCELERATION, 2)  # offline fixture only
@@ -44,8 +45,24 @@ def validate_workspace_radius(radius):
     return radius
 
 
-def position_frames(q):
+def position_frames(q, limits=None):
     values = np.rint(np.degrees(finite_tuple(q, 7, "joint target")) * 1000).astype(np.int64)
+    if limits is not None:
+        limits = np.asarray(limits, dtype=float)
+        if limits.shape != (7, 2) or not np.all(np.isfinite(limits)):
+            raise ValueError("Invalid joint position limits for CAN encoding")
+        lower = np.ceil(np.degrees(limits[:, 0]) * 1000).astype(np.int64)
+        upper = np.floor(np.degrees(limits[:, 1]) * 1000).astype(np.int64)
+        # Match the feedback decoder's arithmetic, including floating-point
+        # round trips at an exactly representable millidegree boundary.
+        lower += np.radians(lower * .001) < limits[:, 0]
+        upper -= np.radians(upper * .001) > limits[:, 1]
+        if np.any(lower > upper):
+            raise ValueError("Joint position interval has no representable CAN angle")
+        # Guards assess continuous references for speed and acceleration. The
+        # wire uses millidegrees, so round inward at bounds without feeding
+        # quantization steps back into those derivative checks.
+        values = np.clip(values, lower, upper)
     frames = [(0x155 + i, struct.pack(">ii", int(values[2*i]), int(values[2*i+1]))) for i in range(3)]
     frames.append((0x170, struct.pack(">ii", int(values[6]), 0)))
     return frames
@@ -98,8 +115,15 @@ class MotionGuard:
         active = self.indices
         if not 0 < dt <= .05:
             raise RuntimeError("Invalid command period")
-        if np.any(q < self.limits[:, 0]) or np.any(q > self.limits[:, 1]):
-            raise RuntimeError("Command violates model-limit bounds")
+        outside = (q < self.limits[:, 0]) | (q > self.limits[:, 1])
+        if np.any(outside):
+            index = int(np.flatnonzero(outside)[0])
+            bound = self.limits[index, 0 if q[index] < self.limits[index, 0] else 1]
+            raise RuntimeError(
+                f"Command violates model-limit bounds: {JOINT_NAMES[index]} "
+                f"value={q[index]:.12g} rad, bound={bound:.12g} rad, "
+                f"delta={q[index] - bound:+.12g} rad"
+            )
         if self.workspace_radius_m is not None and np.max(abs(q[active] - self.seed[active])) > MAX_EXCURSION:
             raise RuntimeError("Command exceeds commissioning joint excursion")
         velocity = (q - self.previous) / dt
@@ -118,7 +142,7 @@ class MotionGuard:
         return q[active]
 
     def hold(self, measured):
-        self.previous = np.asarray(measured).copy()
+        self.previous = bounded_hold_reference(measured, self.limits)
         self.velocity[:] = 0
 
 
@@ -163,6 +187,8 @@ holding after host/power/CAN failure is not certified by this software.
         self.last_send = 0.
         self.fault = None
         self.closed = False
+        self.control_mode = "follower"
+        self.initial_hand_guiding = False
         try:
             if _shared_reader is None:
                 arms = json.loads(Path(mapping).read_text())["arms"]
@@ -181,8 +207,31 @@ holding after host/power/CAN failure is not certified by this software.
             else:
                 self.reader = _shared_reader
             self.last = self.reader.read(timeout=1.)
-            if any(v & 0x40 for v in self.last.driver_status):
-                raise RuntimeError("Start with both arms disabled; another controller may own motion")
+            for i, arm in enumerate(SIDES):
+                states = self.last.driver_status[i*7:i*7+7]
+                if any(v is None for v in states):
+                    raise RuntimeError(f"{arm}: leader stream has no motor-status acknowledgement; cannot adopt an unknown enabled state")
+                if any(v & 0x40 for v in states) and not (
+                    all(v & 0x40 for v in states) and self.last.angle_sources[i] == "leader"
+                ):
+                    counts = ", ".join(
+                        f"{name} {sum(bool(v & 0x40) for v in self.last.driver_status[j*7:j*7+7] if v is not None)}/7 enabled"
+                        for j, name in enumerate(SIDES)
+                    )
+                    statuses = ", ".join(
+                        f"{name}={status.hex() if status is not None else 'unavailable'}"
+                        for name, status in zip(SIDES, self.last.arm_status or (None, None))
+                    )
+                    raise RuntimeError(
+                        f"START_REQUIRES_DISABLED_ARMS: {counts}; controller status: {statuses}. "
+                        "Enabled feedback does not identify who enabled the motors. "
+                        "Close other robot controllers, mechanically support BOTH arms, then run "
+                        "`.venv-official/bin/python -m agilex_deploy.hardware_power --arms-supported`. "
+                        "Disabling removes holding torque. Startup sent no motor enable/disable or mode commands."
+                    )
+            self.initial_hand_guiding = self.last.angle_sources[self.side_index] == "leader"
+            if self.initial_hand_guiding:
+                self.control_mode = "hand_guiding"
             if gripper_control:
                 from .gripper import query_range
                 self.gripper_range_m = query_range(self.reader.channels[side])
@@ -218,24 +267,37 @@ holding after host/power/CAN failure is not certified by this software.
 
     def read_encoders(self, snapshot=None):
         self.last = self.reader.read(timeout=.01) if snapshot is None else snapshot
-        if any(v & ~0x40 for v in self.last.driver_status):
+        if any(v is not None and v & ~0x40 for v in self.last.driver_status):
             raise RuntimeError("NERO driver reports a fault")
+        guiding = getattr(self, "control_mode", "follower") == "hand_guiding"
         if self.armed:
             states = self.last.driver_status[self.indices]
             status = self.last.arm_status[self.side_index]
-            if not all(v & 0x40 for v in states):
+            if not guiding and not all(v is not None and v & 0x40 for v in states):
                 raise RuntimeError("Selected arm lost motor enable")
-            if status[0] != 1 or status[1] != 0 or status[2] != 1 or any(status[6:8]):
-                raise RuntimeError(f"Selected arm is not healthy CAN joint mode: {status.hex()}")
+            if guiding and any(v is not None and not v & 0x40 for v in states):
+                raise RuntimeError("Selected arm lost motor enable")
+            healthy = (guiding and status is None) or (status is not None and status[1] == 0 and not any(status[6:8]))
+            expected = (self.last.angle_sources[self.side_index] == "leader"
+                        if guiding else status is not None and status[0] == 1 and status[2] == 1)
+            if not healthy or not expected:
+                raise RuntimeError(f"Selected arm is not healthy CAN joint mode: {status.hex() if status else 'unavailable'}")
         grippers = [None, None]
-        if self.gripper_control:
+        if self.gripper_control and not guiding:
             feedback = self._gripper_feedback()
             grippers[self.side_index] = feedback.normalized(self.gripper_range_m)
             if self.gripper_started is not None and time.monotonic()-self.gripper_started > .5 and not feedback.enabled:
                 raise RuntimeError("Selected gripper did not enable or lost enable")
+        feedback_status = tuple(dict(angle_source=self.last.angle_sources[i],
+                                    velocity_source=self.last.velocity_sources[i],
+                                    motor_enabled=(all(v & 0x40 for v in self.last.driver_status[i*7:i*7+7])
+                                                   if all(v is not None for v in self.last.driver_status[i*7:i*7+7]) else None),
+                                    gripper_feedback_available=bool(self.last.gripper_feedback and self.last.gripper_feedback[i] is not None))
+                                for i in range(2))
         return EncoderSample(self.last.sequence, self.last.timestamp_s, JOINT_NAMES,
                              self.last.positions, self.last.velocities, tuple(grippers),
-                             self.last.gripper_feedback if self.gripper_control else (None, None))
+                             tuple(f if i == self.side_index and not guiding else None for i, f in enumerate(self.last.gripper_feedback or (None,None)))
+                             if self.gripper_control else (None, None), feedback_status)
 
     def _gripper_feedback(self):
         if self.last.gripper_feedback is None or self.last.gripper_feedback[self.side_index] is None:
@@ -255,10 +317,13 @@ holding after host/power/CAN failure is not certified by this software.
 
     def prepare_arm(self):
         """Read limits and seed targets while both arms remain disabled."""
+        require_qualified_enable(self.reader.read(timeout=.03) if getattr(self, "reader", None) else None,
+                                 can_mode_sides=())
         if self.armed or self.writer is not None:
             raise RuntimeError("Arming is one-shot; restart to repeat commissioning")
         sample = self.read_encoders()
-        if any(v & 0x40 for v in self.last.driver_status) or max(abs(v) for v in sample.velocities) > .02:
+        adopting = getattr(self, "initial_hand_guiding", False)
+        if (not adopting and any(v & 0x40 for v in self.last.driver_status[self.indices])) or max(abs(v) for v in sample.velocities) > .02:
             raise RuntimeError("Arming requires disabled, stationary arms")
         self.writer = socket.socket(socket.PF_CAN, socket.SOCK_RAW, socket.CAN_RAW)
         self.writer.setsockopt(socket.SOL_CAN_RAW, socket.CAN_RAW_FILTER, b"")
@@ -266,25 +331,52 @@ holding after host/power/CAN failure is not certified by this software.
         self.writer.setblocking(False)
         # CAN joint position mode, 100% of configured firmware speed. Installation byte 0
         # leaves the already configured mounting orientation unchanged.
-        self._send([(0x151, bytes([1, 1, 100, 0, 0, 0, 0, 0]))])
+        if not adopting:
+            # Request normal CAN joint mode and normal feedback while disabled.
+            # Never enable as a fallback if firmware ignores mode selection.
+            requested_at = time.monotonic()
+            self._send([(0x151, bytes([1, 1, 100, 0, 0, 0, 1, 0]))])
+            deadline = requested_at + .3
+            while True:
+                self.last = self.reader.read(timeout=.03)
+                require_qualified_enable(self.last, can_mode_sides=())
+                status = self.last.arm_status[self.side_index]
+                if (self.last.status_timestamp_s > requested_at
+                        and status[0] == 1 and status[2] == 1):
+                    break
+                if time.monotonic() >= deadline:
+                    raise RuntimeError(
+                        f"{self.side}: CAN position mode was not acknowledged while disabled; "
+                        "no motor enable was sent"
+                    )
         # Read after selecting CAN mode, while all motors are still disabled.
         # No fallback to another arm's settings, and no limit-setting writes.
         limits = query_motion_limits(self.reader.channels[self.side], self.kin.limits[self.indices])
         sample = self.read_encoders()
-        if any(v & 0x40 for v in self.last.driver_status):
+        require_qualified_enable(self.last, can_mode_sides=(self.side,))
+        if not adopting and any(v & 0x40 for v in self.last.driver_status[self.indices]):
             raise RuntimeError("Motor enable changed during limit readback")
         self.guard = MotionGuard(self.side, sample.positions, self.kin.limits, self.kin,
                                  workspace_radius_m=self.workspace_radius_m, motion_limits=limits,
                                  gripper_control=self.gripper_control)
         print(f"{self.side} controller limits: speed={limits.velocity.tolist()} rad/s, "
               f"acceleration={limits.acceleration.tolist()} rad/s²; firmware speed=100%", flush=True)
-        self.last_command = np.asarray(sample.positions[self.indices])
-        self._send(position_frames(self.last_command))
+        self.last_command = self.guard.previous[self.indices].copy()
+        if not adopting:
+            self._send(position_frames(self.last_command, self.guard.motion_limits.position))
         return sample
 
     def arm(self):
+        # Outside the recovery handler: no writer or enable has been attempted.
+        require_qualified_enable(self.reader.read(timeout=.03) if getattr(self, "reader", None) else None,
+                                 can_mode_sides=())
         try:
             sample = self.prepare_arm()
+            require_qualified_enable(self.last)
+            if getattr(self, "initial_hand_guiding", False):
+                self.armed = True
+                self.read_encoders()
+                return
             # Explicit indices avoid the upstream ambiguity of index 8 versus
             # all joints. No gripper enable or gripper command is sent.
             for joint in range(1, 8):
@@ -297,7 +389,7 @@ holding after host/power/CAN failure is not certified by this software.
                     raise RuntimeError("Posture shifted during arming")
                 if any(v & ~0x40 for v in self.last.driver_status):
                     raise RuntimeError("Driver fault during arming")
-                self._send(position_frames(self.last_command))
+                self._send(position_frames(self.last_command, self.guard.motion_limits.position))
                 states = self.last.driver_status[self.indices]
                 status = self.last.arm_status[self.side_index]
                 if all(v & 0x40 for v in states) and status[:3] == bytes([1, 0, 1]):
@@ -318,6 +410,8 @@ holding after host/power/CAN failure is not certified by this software.
             return  # Observe-only startup; zero hardware motion writes.
         if self.fault:
             raise RuntimeError(self.fault)
+        if getattr(self, "control_mode", "follower") != "follower":
+            raise RuntimeError("Position writes are blocked outside follower control")
         if any(g is not None and (not self.gripper_control or i != self.side_index)
                for i, g in enumerate(grippers)):
             raise ValueError("Hardware grippers are not commissioned")
@@ -326,7 +420,7 @@ holding after host/power/CAN failure is not certified by this software.
             self.hold()
             raise RuntimeError(self.fault)
         selected = self.guard.command(positions, self.last.positions)
-        frames = position_frames(selected)
+        frames = position_frames(selected, self.guard.motion_limits.position)
         if self.gripper_active:
             from .gripper import width_frame
             self._gripper_feedback()
@@ -348,7 +442,9 @@ holding after host/power/CAN failure is not certified by this software.
             self.gripper_started = time.monotonic()
         self.last_command = selected.copy()
 
-    def hold(self):
+    def hold(self, *, preserve_grippers=False):
+        if getattr(self, "control_mode", "follower") != "follower":
+            return  # Never send stale position targets into leader/unknown mode.
         if self.writer is None or self.last_command is None:
             return
         # Keep the last bounded setpoint if fresh feedback cannot be acquired.
@@ -359,13 +455,13 @@ holding after host/power/CAN failure is not certified by this software.
             latest = self.last
             latest.validate(time.monotonic())
             self.last = latest
-            self.last_command = np.asarray(latest.positions[self.indices])
             self.guard.hold(latest.positions)
+            self.last_command = self.guard.previous[self.indices].copy()
         except (RuntimeError, OSError):
             pass
-        frames = position_frames(self.last_command)
+        frames = position_frames(self.last_command, self.guard.motion_limits.position)
         gripper_error = None
-        if self.gripper_active and self.last is not None and self.last.gripper_feedback:
+        if not preserve_grippers and self.gripper_active and self.last is not None and self.last.gripper_feedback:
             feedback = self.last.gripper_feedback[self.side_index]
             # HOLD never enables a disabled/faulted gripper. If feedback is
             # stale, request its last observed position, not the distant goal;
@@ -380,6 +476,137 @@ holding after host/power/CAN failure is not certified by this software.
         self._send(frames)
         if gripper_error:
             raise RuntimeError(f"Arm HOLD sent; gripper HOLD unavailable: {gripper_error}")
+
+    def _stationary_sample(self, holding):
+        deadline = time.monotonic() + 2.
+        settled = None
+        while time.monotonic() < deadline:
+            sample = self.read_encoders()
+            now = time.monotonic()
+            if max(abs(v) for v in sample.velocities[self.indices]) <= .02:
+                settled = settled or now
+                if now - settled >= .1:
+                    return sample
+            else:
+                settled = None
+            if holding:
+                self.hold(preserve_grippers=True)
+            time.sleep(.01)
+        raise RuntimeError("Mode change requires stationary joints; transition not completed")
+
+    def enter_hand_guiding(self):
+        require_qualified_hand_guiding()
+        if not self.armed:
+            return
+        if self.fault:
+            raise RuntimeError(self.fault)
+        if getattr(self, "control_mode", "follower") == "hand_guiding":
+            self.read_encoders()
+            return
+        self._stationary_sample(holding=True)
+        switched = self.request_hand_guiding()
+        self.confirm_hand_guiding(switched)
+
+    def request_hand_guiding(self):
+        """Paired owner preflights both arms before issuing either request."""
+        require_qualified_hand_guiding()
+        from .hand_guiding import official_mode_frames
+        frames = official_mode_frames("leader")
+        # From here on, even failed/partial mode writes must never cause stale
+        # follower setpoints to be replayed by HOLD, fault handling, or close.
+        self.control_mode = "transition"
+        try:
+            self._send(frames)
+            switched = time.monotonic()
+            self.reader.set_angle_source(self.side, "leader", switched)
+            return switched
+        except Exception as error:
+            self.fault = f"Hand-guiding unconfirmed on {self.side}: {error}; no automatic disable"
+            raise RuntimeError(self.fault) from error
+
+    def confirm_hand_guiding(self, switched):
+        try:
+            self._confirm_mode("leader", switched)
+            self.control_mode = "hand_guiding"
+            self.gripper_active = False
+        except Exception as error:
+            self.fault = f"Hand-guiding unconfirmed on {self.side}: {error}; no automatic disable"
+            raise RuntimeError(self.fault) from error
+
+    def _confirm_mode(self, source, since):
+        deadline = time.monotonic() + 1.5
+        last_error = "No new feedback"
+        while time.monotonic() < deadline:
+            try:
+                snapshot = self.reader.read(timeout=.03)
+                snapshot.validate(time.monotonic())
+                status = snapshot.arm_status[self.side_index]
+                if snapshot.timestamp_s <= since:
+                    raise RuntimeError("Waiting for post-transition telemetry")
+                if snapshot.angle_sources[self.side_index] != source:
+                    raise RuntimeError("Waiting for requested encoder stream")
+                if source == "leader":
+                    # A leader angle stream confirms protocol mode only. It is
+                    # not an acknowledgement of motor enable or gravity support.
+                    self.last = snapshot
+                    return snapshot
+                if (snapshot.driver_timestamp_s is None or snapshot.driver_timestamp_s <= since
+                        or snapshot.status_timestamp_s is None or snapshot.status_timestamp_s <= since):
+                    raise RuntimeError("Waiting for fresh follower motor/status feedback")
+                if not all(v == 0x40 for v in snapshot.driver_status[self.indices]):
+                    raise RuntimeError("Enable lost or driver fault during mode switch")
+                if status[1] or any(status[6:8]):
+                    raise RuntimeError(f"Unhealthy arm status {status.hex()}")
+                if source == "follower" and status[:3] != bytes([1, 0, 1]):
+                    raise RuntimeError("Waiting for CAN joint mode")
+                leader_stamp = snapshot.leader_timestamps_s[self.side_index]
+                if source == "follower" and time.monotonic() - max(since, leader_stamp or since) < .1:
+                    raise RuntimeError("Waiting for leader stream to stop before follower control")
+                self.last = snapshot
+                return snapshot
+            except RuntimeError as error:
+                last_error = str(error)
+            time.sleep(.01)
+        raise RuntimeError(last_error)
+
+    def begin_control(self):
+        if getattr(self, "control_mode", "follower") == "follower":
+            return
+        if self.fault or self.control_mode != "hand_guiding":
+            raise RuntimeError(self.fault or "Control mode is unconfirmed")
+        sample = self._stationary_sample(holding=False)
+        switched = self.request_control(sample)
+        self.confirm_control(switched)
+
+    def request_control(self, sample):
+        from .hand_guiding import official_mode_frames, follower_feedback_frame
+        self.guard.hold(sample.positions)
+        self.last_command = self.guard.previous[self.indices].copy()
+        self.control_mode = "transition"
+        try:
+            # Seed before leaving leader mode, then resend immediately after.
+            # No old policy setpoint survives a hand-guided posture change.
+            self._send(position_frames(self.last_command, self.guard.motion_limits.position))
+            self._send(official_mode_frames("follower"))
+            self._send([follower_feedback_frame()])
+            self._send(position_frames(self.last_command, self.guard.motion_limits.position))
+            switched = time.monotonic()
+            self.reader.set_angle_source(self.side, "follower", switched)
+            return switched
+        except Exception as error:
+            self.fault = f"Follower mode unconfirmed on {self.side}: {error}; no automatic disable"
+            raise RuntimeError(self.fault) from error
+
+    def confirm_control(self, switched):
+        try:
+            snapshot = self._confirm_mode("follower", switched)
+            self.guard.hold(snapshot.positions)
+            self.last_command = self.guard.previous[self.indices].copy()
+            self._send(position_frames(self.last_command, self.guard.motion_limits.position))
+            self.control_mode = "follower"
+        except Exception as error:
+            self.fault = f"Follower mode unconfirmed on {self.side}: {error}; no automatic disable"
+            raise RuntimeError(self.fault) from error
 
     def close(self):
         if self.closed:

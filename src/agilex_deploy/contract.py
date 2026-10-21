@@ -5,7 +5,7 @@ ground-truth object state, backend selector, or vendor SDK type in this API.
 """
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Protocol
 import numpy as np
 
@@ -85,6 +85,40 @@ class JointAction(Action):
 
 
 @dataclass(frozen=True)
+class MixedAction(Action):
+    """Cartesian goals for selected arms and fixed joint holds for the others.
+
+    The joint vector is captured when the action is created. Feedback updates
+    must not turn an unselected arm's hold into a new Cartesian IK objective.
+    Gripper commands remain independent of each arm's motion mode.
+    Optional per-arm starts freeze validated geometry, including the rotation
+    direction near a half-turn. Feedback still controls waypoint progression.
+    """
+
+    cartesian_arms: tuple[str, ...]
+    joint_positions_rad: tuple[float, ...]
+    rotation_arcs: tuple[str, str] = ("shortest", "shortest")
+    cartesian_starts: tuple[Pose | None, Pose | None] = (None, None)
+
+    def __post_init__(self):
+        super().__post_init__()
+        arms = tuple(self.cartesian_arms)
+        if not arms or any(side not in SIDES for side in arms) or len(set(arms)) != len(arms):
+            raise ValueError("cartesian_arms must contain distinct left/right arm names")
+        object.__setattr__(self, "cartesian_arms", tuple(side for side in SIDES if side in arms))
+        object.__setattr__(self, "joint_positions_rad",
+                           finite_tuple(self.joint_positions_rad, 14, "joint_positions_rad"))
+        arcs = tuple(self.rotation_arcs)
+        if len(arcs) != 2 or any(arc not in ("shortest", "alternate") for arc in arcs):
+            raise ValueError("rotation_arcs must contain left/right shortest or alternate")
+        object.__setattr__(self, "rotation_arcs", arcs)
+        starts = tuple(self.cartesian_starts)
+        if len(starts) != 2 or any(start is not None and not isinstance(start, Pose) for start in starts):
+            raise ValueError("cartesian_starts must contain left/right Pose or None")
+        object.__setattr__(self, "cartesian_starts", starts)
+
+
+@dataclass(frozen=True)
 class GripperState:
     """Measured tracking outcome, not an object-contact or grasp-success claim.
 
@@ -117,6 +151,8 @@ class Observation:
     cameras: tuple = ()  # Empty means unavailable; no synthetic RGB-D is returned.
     schema_version: int = 3
     gripper_states: tuple[GripperState, GripperState] = (GripperState(), GripperState())
+    feedback_status: tuple = ()  # Source/availability metadata; unknown motor enable is None.
+    motion_paths: dict = field(default_factory=dict)
 
     def to_dict(self):
         return asdict(self)
@@ -130,4 +166,6 @@ class RobotInterface(Protocol):
     def observe(self) -> Observation: ...
     def submit_target(self, action: Action, observation_id: int) -> int: ...
     def hold(self) -> None: ...
+    def enter_hand_guiding(self) -> None: ...
+    def begin_control(self) -> None: ...
     def close(self) -> None: ...

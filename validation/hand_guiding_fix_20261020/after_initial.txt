@@ -1,0 +1,7 @@
+left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.682s
+
+OK

@@ -30,10 +30,16 @@
   },
   "controller_mounting_configuration_verified": true,
   "controller_mounting_configuration_evidence": {
-    "source": "user confirmation of official Web UI settings",
+    "source": "User-supplied official controller status screenshots after changing mounting settings, 2026-10-20 15:39 and 15:40",
     "left": "side mounting",
     "right": "side mounting",
-    "independently_read_back_by_software": false
+    "independently_read_back_by_software": false,
+    "clarification_2026_10_20": "Earlier side-mounting statements referred only to the project dashboard and were not controller verification. Later official Web UI screenshots supersede that evidence: both distinct Wi-Fi controllers now display 2-side mounting.",
+    "controller_screenshots": {
+      "agx-7ax-4t4": {"installation_position": 2, "label": "侧装", "control_mode": "CAN", "linkage_mode": "从臂", "tool": "夹爪", "screenshot_time_local": "2026-10-20 15:39:40"},
+      "agx-7ax-m2t": {"installation_position": 2, "label": "侧装", "control_mode": "CAN", "linkage_mode": "从臂", "tool": "夹爪", "screenshot_time_local": "2026-10-20 15:40:43"}
+    },
+    "verification_scope": "Both controller status pages report side mounting. This does not verify motor enable state, physical gravity compensation, target continuity, exact base orientation, or Wi-Fi-to-CAN side identity. The separate physical-enable incident interlock remains in force."
   },
   "dynamic_joint_direction_check_complete": false,
   "tcp_calibrated": false,

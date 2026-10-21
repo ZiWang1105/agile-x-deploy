@@ -1,0 +1,26 @@
+{
+  "original_failure_reproduced": true,
+  "before_log": "before.txt",
+  "full_suite": {
+    "tests": 209,
+    "status": "passed"
+  },
+  "final_targeted_regressions": {
+    "tests": 35,
+    "status": "passed"
+  },
+  "browser_launchers": {
+    "code": "passed",
+    "mcp": "passed",
+    "unknown_feedback_display": "passed"
+  },
+  "simulation_report": "simulation_report.json",
+  "physical_commands_sent": 0,
+  "physical_swing_cause_established": false,
+  "physical_deployment_qualified": false,
+  "limitations": [
+    "MuJoCo uses ideal gravity compensation; physical torque balance has not been verified.",
+    "CAN mode writes are sequential across adapters, not hardware atomic.",
+    "A new session cannot adopt leader-only feedback with unknown motor-enable state."
+  ]
+}

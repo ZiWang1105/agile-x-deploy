@@ -1,0 +1,30 @@
+left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+...left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+..left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+.left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+.
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
+
+.left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+left controller limits: speed=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+right controller limits: speed=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0] rad/s, acceleration=[2.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5] rad/s²; firmware speed=100%
+...
+----------------------------------------------------------------------
+Ran 11 tests in 16.084s
+
+OK
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************

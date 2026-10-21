@@ -118,7 +118,8 @@ class HardwareTests(unittest.TestCase):
                 self.assertEqual(tuple(guard.seed), tuple(seed))
                 guard.action(upward(before, side, .031))
 
-    def test_arm_seeds_measured_angles_before_enable_and_never_touches_gripper(self):
+    @patch("agilex_deploy.nero_transport.require_qualified_enable")
+    def test_arm_seeds_measured_angles_before_enable_and_never_touches_gripper(self, _offline_enable):
         class Writer:
             def __init__(self):
                 self.frames = []
@@ -170,7 +171,8 @@ class HardwareTests(unittest.TestCase):
         self.assertTrue(t.armed)
         self.assertEqual(writer.address, ("test-left",))
         first_enable = next(i for i, (cid, _, _) in enumerate(writer.frames) if cid == 0x471)
-        self.assertEqual(writer.frames[0], (0x151, 8, bytes([1, 1, 100, 0, 0, 0, 0, 0])))
+        # Normal feedback push is requested so mode selection can be acknowledged.
+        self.assertEqual(writer.frames[0], (0x151, 8, bytes([1, 1, 100, 0, 0, 0, 1, 0])))
         self.assertEqual([(cid, data) for cid, _, data in writer.frames[1:first_enable]], position_frames(q[:7]))
         enables = [data[:2] for cid, _, data in writer.frames if cid == 0x471]
         self.assertEqual(enables, [bytes([j, 2]) for j in range(1, 8)])
@@ -236,7 +238,7 @@ class HardwareTests(unittest.TestCase):
             guard.action(Action(**arms))
 
     def test_unarmed_rejects_motion_and_process_watchdog_latches(self):
-        with HardwareSession("left", simulation=True) as session:
+        with HardwareSession("left", simulation=True, gravity_comp=True) as session:
             observed = session.observe()
             self.assertEqual(observed.mode, "unarmed")
             self.assertEqual(observed.gripper_position, (None, None))
@@ -245,6 +247,11 @@ class HardwareTests(unittest.TestCase):
             lift = session.arm()
             self.assertAlmostEqual(lift.left.pose.position_m[2] - observed.left_tcp.position_m[2], .03)
             self.assertNotEqual(session.observe().mode, "unarmed")
+            self.assertEqual(session.observe().mode, "hand_guiding")
+            # Idle hand-guiding has no target heartbeat. Tracking still does.
+            time.sleep(.3)
+            self.assertEqual(session.observe().mode, "hand_guiding")
+            session.begin_control()
             # The parent does not send heartbeat or targets; child must HOLD
             # without relying on parent callbacks or its GIL.
             time.sleep(.3)

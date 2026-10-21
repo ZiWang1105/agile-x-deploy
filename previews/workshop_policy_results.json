@@ -1,0 +1,85 @@
+{
+  "model": "google/gemini-3.8-flash",
+  "provenance": "Recorded model-driven simulator runs. No hardware execution or new model calls were used to create these previews.",
+  "playback": {
+    "speed": 1,
+    "trimmed": false,
+    "model_waits_preserved": true,
+    "gif_fps": 5,
+    "gif_width_px": 720
+  },
+  "runs": {
+    "code": {
+      "source_filename": "logs/validation/bounds_code_policy/episode.mp4",
+      "source_sha256": "6343042a9e4cc3faa23b0f11423a7b1a414180c5c9b981233fe49077eac0e62f",
+      "video_filename": "previews/workshop_code_policy.mp4",
+      "video_bytes": 212369,
+      "video_frames": 409,
+      "video_fps": 10.0,
+      "video_duration_s": 40.9,
+      "gif_filename": "previews/workshop_code_policy.gif",
+      "gif_bytes": 563477,
+      "gif_frames": 205,
+      "gif_dimensions_px": [
+        720,
+        405
+      ],
+      "gif_duration_s": 40.9,
+      "validation": {
+        "success": true,
+        "task": "place",
+        "placement_dwell_s": {
+          "red": 3.4600000000042286
+        },
+        "max_lift_m": {
+          "red": 0.1259010728451207
+        },
+        "distractor_unchanged": true,
+        "max_displacement_m": {
+          "red": 0.19498970410612831
+        },
+        "robot_environment_collision_frames": 0,
+        "criterion": "lift >=25 mm; full footprint in tray; released, tray-supported and stable >=1 s; distractor translation <10 mm throughout; no penetrating arm/environment contacts",
+        "policy_exit_code": 0,
+        "transport": "python",
+        "policy_type": "model"
+      }
+    },
+    "mcp": {
+      "source_filename": "logs/validation/ik_policy_sim/episode.mp4",
+      "source_sha256": "29427d28acce8cc3ac417eea798d0b9acffe58ad8042a353ea93a9755c60ab4a",
+      "video_filename": "previews/workshop_mcp_policy.mp4",
+      "video_bytes": 467617,
+      "video_frames": 1316,
+      "video_fps": 10.0,
+      "video_duration_s": 131.6,
+      "gif_filename": "previews/workshop_mcp_policy.gif",
+      "gif_bytes": 944965,
+      "gif_frames": 658,
+      "gif_dimensions_px": [
+        720,
+        405
+      ],
+      "gif_duration_s": 131.6,
+      "validation": {
+        "success": true,
+        "task": "place",
+        "placement_dwell_s": {
+          "red": 13.689999999969643
+        },
+        "max_lift_m": {
+          "red": 0.1260963707009627
+        },
+        "distractor_unchanged": true,
+        "max_displacement_m": {
+          "red": 0.18292119954599828
+        },
+        "robot_environment_collision_frames": 0,
+        "criterion": "lift >=25 mm; full footprint in tray; released, tray-supported and stable >=1 s; distractor translation <10 mm throughout; no penetrating arm/environment contacts",
+        "policy_exit_code": 0,
+        "transport": "mcp",
+        "policy_type": "model"
+      }
+    }
+  }
+}

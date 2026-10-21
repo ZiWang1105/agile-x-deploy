@@ -2,7 +2,9 @@
 
 The viewer never owns a CAN writer. The child process observes feedback and
 enforces a 200 ms operator heartbeat independently of the viewer's Python GIL.
-Closing the session requests HOLD and joins the child; it does not disable motors.
+Normal close holds position and joins the child. Hand-guiding is opt-in with
+gravity_comp=True. Fault cleanup retains the last confirmed mode; neither path
+disables motors. Supported motor disable is a separate explicit operation.
 """
 from dataclasses import replace
 import multiprocessing as mp
@@ -18,6 +20,7 @@ from .official_ik import OfficialDualIK
 from .nero_transport import NeroTransport, MotionGuard, validate_workspace_radius
 from .runtime import Robot
 from .dual_transport import DualNeroTransport, DualMotionGuard, selected_sides
+from .hardware_interlock import require_qualified_hand_guiding
 
 OPERATOR_TIMEOUT = .2
 
@@ -34,6 +37,7 @@ class SimulatedCommissioningTransport:
         self.armed = False
         self.guard = None
         self.closed = False
+        self.control_mode = "follower"
 
     def read_encoders(self):
         sample = self.plant.read()
@@ -59,16 +63,28 @@ class SimulatedCommissioningTransport:
             self.guard.command(q, sample.positions)
             command = np.array(sample.positions)
             command[self.guard.indices] = q[self.guard.indices]
-            grip = list(self.plant.read().grippers)
+            grip = [float(self.plant.data.ctrl[self.plant.model.actuator(s + "_gripper").id] / .05)
+                    for s in SIDES]
             for side in self.gripper_active:
                 grip[SIDES.index(side)] = grippers[SIDES.index(side)]
             self.plant.write(command, grip)
             self.plant.advance()
 
-    def hold(self):
+    def hold(self, *, preserve_grippers=False):
         if self.guard:
             self.guard.hold(self.read_encoders().positions)
-        self.plant.hold()
+        self.plant.hold(preserve_grippers=preserve_grippers)
+
+    def enter_hand_guiding(self):
+        if self.armed:
+            self.plant.enter_hand_guiding()
+            self.control_mode = "hand_guiding"
+            self.gripper_active.clear()
+
+    def begin_control(self):
+        self.plant.begin_control()
+        self.guard.hold(self.read_encoders().positions)
+        self.control_mode = "follower"
 
     def close(self):
         self.closed = True
@@ -76,7 +92,7 @@ class SimulatedCommissioningTransport:
 
 
 def control_worker(connection, side, mapping, commissioning, simulation, workspace_radius_m,
-                   gripper_control=False, gripper_force_n=1.0):
+                   gripper_control=False, gripper_force_n=1.0, gravity_comp=False):
     # Terminal Ctrl+C goes to both processes. Let the viewer request HOLD and
     # close over IPC instead of interrupting the owner during a CAN operation.
     signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -98,7 +114,7 @@ def control_worker(connection, side, mapping, commissioning, simulation, workspa
         connection.send((0, True, "ready"))
         while True:
             now = time.monotonic()
-            if transport.armed and heartbeat is not None and now - heartbeat > OPERATOR_TIMEOUT and interlock is None:
+            if transport.armed and robot.mode != "hand_guiding" and heartbeat is not None and now - heartbeat > OPERATOR_TIMEOUT and interlock is None:
                 interlock = "Operator heartbeat expired; HOLD latched. Restart required."
                 try:
                     robot.hold()
@@ -119,9 +135,11 @@ def control_worker(connection, side, mapping, commissioning, simulation, workspa
                     # Close must terminate the owner even when HOLD fails.
                     # Report that failure; never claim a confirmed stop.
                     try:
+                        if gravity_comp and payload is not False and transport.armed and interlock is None and robot.mode != "fault":
+                            robot.enter_hand_guiding()
                         robot.close()
                     except Exception as error:
-                        connection.send((request_id, False, f"Close completed; HOLD unconfirmed: {error}"))
+                        connection.send((request_id, False, f"Close failed; final mode unconfirmed: {error}"))
                     else:
                         connection.send((request_id, True, None))
                     break
@@ -138,11 +156,15 @@ def control_worker(connection, side, mapping, commissioning, simulation, workspa
                     if interlock:
                         observed = replace(observed, mode="fault", reason=interlock)
                     elif not transport.armed:
-                        observed = replace(observed, mode="unarmed", reason=f"{side} selected; E enables holding at current posture")
+                        idle = "hand-guiding" if gravity_comp else "position hold"
+                        observed = replace(observed, mode="unarmed", reason=f"{side} selected; E enables {idle}; targets start follower control")
                     result = observed
                 elif operation == "arm":
                     if interlock:
                         raise RuntimeError(interlock)
+                    if gravity_comp and not simulation:
+                        # Reject experimental idle mode BEFORE any motor enable.
+                        require_qualified_hand_guiding()
                     transport.arm()
                     selected = transport.guard.indices
                     limits = transport.guard.motion_limits
@@ -152,11 +174,19 @@ def control_worker(connection, side, mapping, commissioning, simulation, workspa
                     robot.controller.set_motion_limits(velocity, acceleration)
                     robot.kinematics.limits[selected] = limits.position
                     robot.hold()
+                    if gravity_comp:
+                        robot.enter_hand_guiding()
                     # Physical arming and HOLD may take time; rebase every
                     # reference from the fresh sample, never from preview.
                     heartbeat = time.monotonic()
                     next_tick = heartbeat + CONTROL_DT
                     result = transport.guard.lift_target()
+                elif operation == "motion_limits":
+                    if not transport.armed:
+                        raise RuntimeError("Motion limits are available after arming readback")
+                    result = {name: getattr(transport.guard.motion_limits, name).tolist()
+                              for name in ("position", "velocity", "acceleration")}
+                    heartbeat = time.monotonic()
                 elif operation == "submit_target":
                     if not transport.armed or interlock:
                         raise RuntimeError(interlock or "Hardware session is unarmed")
@@ -168,13 +198,23 @@ def control_worker(connection, side, mapping, commissioning, simulation, workspa
                     robot.target_deadline = time.monotonic() + .2
                     heartbeat = time.monotonic()
                 elif operation == "hold":
-                    robot.hold()
+                    robot.hold(preserve_grippers=bool(payload))
                     result = None
+                elif operation in ("enter_hand_guiding", "begin_control"):
+                    if operation == "enter_hand_guiding" and not gravity_comp:
+                        raise RuntimeError("Hand-guiding is disabled (gravity_comp=false)")
+                    if interlock or robot.mode == "fault":
+                        raise RuntimeError(interlock or robot.reason)
+                    if transport.armed:
+                        getattr(robot, operation)()
+                    heartbeat = time.monotonic()
+                    next_tick = heartbeat + CONTROL_DT
+                    result = robot.observe()
                 else:
                     raise ValueError("Unknown hardware session operation")
                 connection.send((request_id, True, result))
             except Exception as error:
-                if operation == "arm":
+                if operation in ("arm", "enter_hand_guiding", "begin_control"):
                     interlock = str(error)
                 elif operation == "submit_target":
                     try:
@@ -203,7 +243,11 @@ def control_worker(connection, side, mapping, commissioning, simulation, workspa
 class HardwareSession:
     def __init__(self, side, mapping=ROOT / "configs/hardware_mapping.json",
                  commissioning=ROOT / "configs/commissioning.json", simulation=False,
-                 workspace_radius_m=None, gripper_control=False, gripper_force_n=1.0):
+                 workspace_radius_m=None, gripper_control=False, gripper_force_n=1.0,
+                 gravity_comp=False):
+        if type(gravity_comp) is not bool:
+            raise ValueError("gravity_comp must be a boolean")
+        self.gravity_comp = gravity_comp
         self.side = side
         self.sides = selected_sides(side)
         self.gripper_control = gripper_control
@@ -219,7 +263,7 @@ class HardwareSession:
         self.connection, child = context.Pipe()
         self.process = context.Process(target=control_worker,
             args=(child, side, str(mapping), str(commissioning), simulation, self.workspace_radius_m,
-                  gripper_control, gripper_force_n),
+                  gripper_control, gripper_force_n, gravity_comp),
             name="nero-control-owner", daemon=False)
         self.process.start()
         child.close()
@@ -254,22 +298,34 @@ class HardwareSession:
         return self._rpc("observe")
 
     def submit_target(self, action, observation_id):
-        return self._rpc("submit_target", (action, observation_id))
+        return self._rpc("submit_target", (action, observation_id), timeout=6.)
 
     def arm(self):
         return self._rpc("arm", timeout=12. if self.side == "both" else 6.)
 
-    def hold(self):
-        return self._rpc("hold")
+    def motion_limits(self):
+        """Return effective limits already read during arming; no controller writes."""
+        return self._rpc("motion_limits")
+
+    def hold(self, *, preserve_grippers=False):
+        return self._rpc("hold", preserve_grippers)
+
+    def enter_hand_guiding(self):
+        if not self.gravity_comp:
+            raise RuntimeError("Hand-guiding is disabled (gravity_comp=false)")
+        return self._rpc("enter_hand_guiding", timeout=8.)
+
+    def begin_control(self):
+        return self._rpc("begin_control", timeout=8.)
 
     def start(self):
         pass  # The child process owns control timing from construction onward.
 
-    def close(self):
+    def close(self, *, hand_guiding=None):
         if self.closed:
             return
         try:
-            self._rpc("close")
+            self._rpc("close", self.gravity_comp and hand_guiding is not False, timeout=8.)
         finally:
             self.closed = True
             self.connection.close()

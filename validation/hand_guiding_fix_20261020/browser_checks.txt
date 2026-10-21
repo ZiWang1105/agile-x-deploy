@@ -1,0 +1,22 @@
+[
+  {
+    "mode": "code",
+    "waiting_gate": true,
+    "enable_and_start": true,
+    "trace_visible": true,
+    "automatic_hand_guiding": true,
+    "unknown_feedback_visible": true,
+    "close_exited": true,
+    "javascript_errors": []
+  },
+  {
+    "mode": "mcp",
+    "waiting_gate": true,
+    "enable_and_start": true,
+    "trace_visible": true,
+    "automatic_hand_guiding": true,
+    "unknown_feedback_visible": true,
+    "close_exited": true,
+    "javascript_errors": []
+  }
+]
