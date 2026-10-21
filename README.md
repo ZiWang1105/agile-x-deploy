@@ -25,16 +25,7 @@ cube, lifting it **121.4 mm** before release. The full regression suite passed
 camera/tool calibration still require qualification. No real motion was run
 for this validation.
 
-Scripted RGB-D baseline: left-arm placement (15.4 seconds).
-
-![Left arm picks up the red cube and places it in the green tray](previews/workshop_place.gif)
-
-Scripted RGB-D baseline: two-arm sorting with independent grippers (27.5 seconds).
-
-![Both arms sequentially sort the red and blue cubes into their matching trays](previews/workshop_sort.gif)
-
-Both GIFs preserve the recorded simulation timing at 10 FPS; these are not LLM
-policy recordings. [Validation results](previews/workshop_validation.json).
+[Validation results](previews/workshop_validation.json).
 
 ![Workshop dashboard with head camera, simulator view, independent arm/gripper feedback, and operation events](previews/workshop_dashboard.png)
 
